@@ -57,14 +57,30 @@ namespace NinjaTrader.Strategy
 		private int te_PipBuffer = 3;
 		
 		// Initial Stop
+		// Initial Stop 1
         private CTS_InitialStop initialStop1 = CTS_InitialStop.EntryBarHighOrLow; // Default setting for InitialStop1
 		private int is1_PipBuffer = 3;
 		private int is1_NumberOfBars = 10;
 		private int is1_MALength = 30;
 		private CTS_MAType is1_MAType = CTS_MAType.Exponential;
 		private int is1_PipDistance = 15;
+		// Initial Stop 2
+        private CTS_InitialStop initialStop2 = CTS_InitialStop.NotUsed; // Default setting for InitialStop1
+		private int is2_PipBuffer = 3;
+		private int is2_NumberOfBars = 10;
+		private int is2_MALength = 30;
+		private CTS_MAType is2_MAType = CTS_MAType.Exponential;
+		private int is2_PipDistance = 15;
+		// Initial Stop 3
+        private CTS_InitialStop initialStop3 = CTS_InitialStop.NotUsed; // Default setting for InitialStop1
+		private int is3_PipBuffer = 3;
+		private int is3_NumberOfBars = 10;
+		private int is3_MALength = 30;
+		private CTS_MAType is3_MAType = CTS_MAType.Exponential;
+		private int is3_PipDistance = 15;
 		
 		// Manage Trade
+		// Manage Trade 1
         private CTS_ManageTrade manageTrade1 = CTS_ManageTrade.MoveStopToNextBarHighLow; // Default setting for ManageTrade1
 		private int mt1_PipBuffer = 5;
 		private bool mt1_IgnoreIndecisionBars = false;
@@ -76,6 +92,30 @@ namespace NinjaTrader.Strategy
 		private int mt1_MALength = 30;
 		private CTS_MAType mt1_MAType = CTS_MAType.Exponential;
 		private double mt1_PctRetracement = 0.61;
+		// Manage Trade 2
+        private CTS_ManageTrade manageTrade2 = CTS_ManageTrade.NotUsed; // Default setting for ManageTrade1
+		private int mt2_PipBuffer = 5;
+		private bool mt2_IgnoreIndecisionBars = false;
+		private int mt2_ActivateOnlyAfterXBars = 4;
+		private int mt2_PipsTrigger = 20;
+		private int mt2_MinPipsProfit = 2;
+		private double mt2_X = 0.5;
+		private double mt2_Y = 0.9;
+		private int mt2_MALength = 30;
+		private CTS_MAType mt2_MAType = CTS_MAType.Exponential;
+		private double mt2_PctRetracement = 0.61;
+		// Manage Trade 3
+        private CTS_ManageTrade manageTrade3 = CTS_ManageTrade.NotUsed; // Default setting for ManageTrade1
+		private int mt3_PipBuffer = 5;
+		private bool mt3_IgnoreIndecisionBars = false;
+		private int mt3_ActivateOnlyAfterXBars = 4;
+		private int mt3_PipsTrigger = 20;
+		private int mt3_MinPipsProfit = 2;
+		private double mt3_X = 0.5;
+		private double mt3_Y = 0.9;
+		private int mt3_MALength = 30;
+		private CTS_MAType mt3_MAType = CTS_MAType.Exponential;
+		private double mt3_PctRetracement = 0.61;
 		
 		// Conditions to Enter
         private CTS_ConditionsToEnter conditionsToEnter1 = CTS_ConditionsToEnter.NotUsed; // Default setting for ConditionsToEnter1
@@ -834,42 +874,92 @@ namespace NinjaTrader.Strategy
 		{
 			if(Location == CTS_Location.AtOrNearMA)
 			{
-				double dMA = MA(LocMALength, LocMAType, 0);
-				if(High[0] >= dMA - LocPipDistance*TickSize && Low[0] <= dMA + LocPipDistance*TickSize)
-				{
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				return LocationAtOrNearMA(LocMALength, LocMAType, LocPipDistance);
+			}
+			else if(Location == CTS_Location.AboveMA)
+			{
+				return LocationAboveMA(LocMALength, LocMAType, LocPipDistance);
+			}
+			else if(Location == CTS_Location.BelowMA)
+			{
+				return LocationBelowMA(LocMALength, LocMAType, LocPipDistance);
 			}
 			else if(Location == CTS_Location.BreakingUpperBollingerBand)
 			{
-				double dBB = Bollinger(LocBBDeviation, LocMALength).Upper[0];
-				if(High[0] >= dBB + Range(0)*LocBBBodyPct)
-				{
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				return LocationBreakingUpperBollingerBand(LocBBBodyPct, LocBBDeviation, LocMALength);
 			}
 			else if(Location == CTS_Location.BreakingLowerBollingerBand)
 			{
-				double dBB = Bollinger(LocBBDeviation, LocMALength).Lower[0];
-				if(Low[0] <= dBB - Range(0)*LocBBBodyPct)
-				{
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				return LocationBreakingLowerBollingerBand(LocBBBodyPct, LocBBDeviation, LocMALength);
 			}
 			
 			return true;
+		}
+		
+		private bool LocationAtOrNearMA(int period, CTS_MAType type, int distanceForNear)
+		{
+			double dMA = MA(period, type, 0);
+			if(High[0] >= dMA - distanceForNear*TickSize && Low[0] <= dMA + distanceForNear*TickSize)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+			
+		}
+		
+		private bool LocationAboveMA(int period, CTS_MAType type, int minDistance)
+		{
+			double dMA = MA(period, type, 0);
+			if(Low[0] >= dMA + minDistance*TickSize)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		private bool LocationBelowMA(int period, CTS_MAType type, int minDistance)
+		{
+			double dMA = MA(period, type, 0);
+			if(High[0] <= dMA - minDistance*TickSize)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		private bool LocationBreakingUpperBollingerBand(double pct, double stdDeviation, int period)
+		{
+			double dBB = Bollinger(stdDeviation, period).Upper[0];
+			if(High[0] >= dBB + Range(0)*pct)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		private bool LocationBreakingLowerBollingerBand(double pct, double stdDeviation, int period)
+		{
+			double dBB = Bollinger(stdDeviation, period).Lower[0];
+			if(Low[0] <= dBB - Range(0)*pct)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 		#endregion
 		
@@ -922,7 +1012,51 @@ namespace NinjaTrader.Strategy
 		#endregion
 		
 		#region Initial Stop
-		double GetBuyInitialStopPrice(CTS_InitialStop initialStop, int buffer, int maLength, CTS_MAType maType, int numBars)
+		private double GetBestBuyStop()
+		{
+			double dStop1 = double.MaxValue;
+			double dStop2 = double.MaxValue;
+			double dStop3 = double.MaxValue;
+			if(initialStop1 != CTS_InitialStop.NotUsed)
+			{
+				dStop1 = GetBuyInitialStopPrice(initialStop1, IS1PipBuffer, IS1MALength, IS1MAType, IS1NumberOfBars);
+			}
+			if(initialStop2 != CTS_InitialStop.NotUsed)
+			{
+				dStop2 = GetBuyInitialStopPrice(initialStop2, IS2PipBuffer, IS2MALength, IS2MAType, IS2NumberOfBars);
+			}
+			if(initialStop3 != CTS_InitialStop.NotUsed)
+			{
+				dStop3 = GetBuyInitialStopPrice(initialStop3, IS3PipBuffer, IS3MALength, IS3MAType, IS3NumberOfBars);
+			}
+			
+			double dMinStop = Math.Min(dStop1, Math.Min(dStop2, dStop3));
+			return dMinStop;
+		}
+		
+		private double GetBestSellStop()
+		{
+			double dStop1 = double.MinValue;
+			double dStop2 = double.MinValue;
+			double dStop3 = double.MinValue;
+			if(initialStop1 != CTS_InitialStop.NotUsed)
+			{
+				dStop1 = GetSellInitialStopPrice(initialStop1, IS1PipBuffer, IS1MALength, IS1MAType, IS1NumberOfBars);
+			}
+			if(initialStop2 != CTS_InitialStop.NotUsed)
+			{
+				dStop2 = GetSellInitialStopPrice(initialStop2, IS2PipBuffer, IS2MALength, IS2MAType, IS2NumberOfBars);
+			}
+			if(initialStop3 != CTS_InitialStop.NotUsed)
+			{
+				dStop3 = GetSellInitialStopPrice(initialStop3, IS3PipBuffer, IS3MALength, IS3MAType, IS3NumberOfBars);
+			}
+			
+			double dMaxStop = Math.Max(dStop1, Math.Max(dStop2, dStop3));
+			return dMaxStop;
+		}
+		
+		private double GetBuyInitialStopPrice(CTS_InitialStop initialStop, int buffer, int maLength, CTS_MAType maType, int numBars)
 		{
 			switch(initialStop)
 			{
@@ -1184,6 +1318,92 @@ namespace NinjaTrader.Strategy
 					CloseWithXPipsInProfit(mt1_MinPipsProfit, mt1_ActivateOnlyAfterXBars);
 					break;
 					
+				case CTS_ManageTrade.MATrailingStop:
+					MATrailingStop(mt1_MALength, mt1_MAType, mt1_PipBuffer, mt1_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtFiboRetracementOfLastSwing:
+					TakeXPercentAtFiboRetracementOfLastSwing(mt1_X, mt1_PctRetracement);
+					break;
+			}
+			
+			switch(ManageTrade2)
+			{
+				case CTS_ManageTrade.MoveStopToNextBarHighLow:
+					MoveStopToNextBarHighLow(mt2_PipBuffer, mt2_IgnoreIndecisionBars, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.MoveStopToNextBarClose:
+					MoveStopToNextBarClose(mt2_PipBuffer, mt2_IgnoreIndecisionBars, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.MoveStopToBreakEven:
+					MoveStopToBreakEven(mt2_PipsTrigger, mt2_MinPipsProfit, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtYto1:
+					TakeXPercentAtYto1(mt2_X, mt2_Y, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.CloseAtXtoY:
+					TakeXPercentAtYto1(mt2_X, mt2_Y, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.CloseWithXPipsInProfit:
+					CloseWithXPipsInProfit(mt2_MinPipsProfit, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.MATrailingStop:
+					MATrailingStop(mt2_MALength, mt2_MAType, mt2_PipBuffer, mt2_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtFiboRetracementOfLastSwing:
+					TakeXPercentAtFiboRetracementOfLastSwing(mt2_X, mt2_PctRetracement);
+					break;
+			}
+			
+			switch(ManageTrade3)
+			{
+				case CTS_ManageTrade.MoveStopToNextBarHighLow:
+					MoveStopToNextBarHighLow(mt3_PipBuffer, mt3_IgnoreIndecisionBars, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.MoveStopToNextBarClose:
+					MoveStopToNextBarClose(mt3_PipBuffer, mt3_IgnoreIndecisionBars, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.MoveStopToBreakEven:
+					MoveStopToBreakEven(mt3_PipsTrigger, mt3_MinPipsProfit, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtYto1:
+					TakeXPercentAtYto1(mt3_X, mt3_Y, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.CloseAtXtoY:
+					TakeXPercentAtYto1(mt3_X, mt3_Y, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.CloseWithXPipsInProfit:
+					CloseWithXPipsInProfit(mt3_MinPipsProfit, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.MATrailingStop:
+					MATrailingStop(mt3_MALength, mt3_MAType, mt3_PipBuffer, mt3_ActivateOnlyAfterXBars);
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtFiboRetracementOfLastSwing:
+					TakeXPercentAtFiboRetracementOfLastSwing(mt3_X, mt3_PctRetracement);
+					break;
+			}
+			
+			if(Position.MarketPosition == MarketPosition.Long)
+			{
+				ExitLongStop(theStop);
+			}
+			if(Position.MarketPosition == MarketPosition.Short)
+			{
+				ExitShortStop(theStop);
 			}
 		}
 		#endregion
@@ -1334,7 +1554,7 @@ namespace NinjaTrader.Strategy
 		 #region Location
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[RefreshProperties(RefreshProperties.All)]
 		[Gui.Design.DisplayName(" Location")]
         public CTS_Location Location
@@ -1344,7 +1564,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("MA Length")]
         public int LocMALength
         {
@@ -1353,7 +1573,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("MA Type")]
         public CTS_MAType LocMAType
         {
@@ -1362,7 +1582,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("Pip Distance")]
         public int LocPipDistance
         {
@@ -1371,7 +1591,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("BB Deviation")]
         public double LocBBDeviation
         {
@@ -1380,7 +1600,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("BB Body Percent")]
         public double LocBBBodyPct
         {
@@ -1391,7 +1611,7 @@ namespace NinjaTrader.Strategy
 		
 		 #region Trade Entry
         [Description("")]
-        [GridCategory("Trade Entry")]
+        [GridCategory("03. Trade Entry")]
 		[RefreshProperties(RefreshProperties.All)]
 		[Gui.Design.DisplayName(" Trade Entry")]
         public CTS_TradeEntry TradeEntry
@@ -1401,7 +1621,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Trade Entry")]
+        [GridCategory("03. Trade Entry")]
 		[Gui.Design.DisplayName("Pip Buffer")]
         public int TEPipBuffer
         {
@@ -1413,9 +1633,9 @@ namespace NinjaTrader.Strategy
 		 #region InitialStop
 
         [Description("")]
-        [GridCategory("Initial Stop")]
+        [GridCategory("04. Initial Stop")]
 		[RefreshProperties(RefreshProperties.All)]
-		[Gui.Design.DisplayName(" Initial Stop 1")]
+		[Gui.Design.DisplayName("01  Initial Stop")]
         public CTS_InitialStop InitialStop1
         {
             get { return initialStop1; }
@@ -1423,8 +1643,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Initial Stop")]
-		[Gui.Design.DisplayName("Pip Buffer 1")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("01 Pip Buffer")]
         public int IS1PipBuffer
         {
             get { return is1_PipBuffer; }
@@ -1432,8 +1652,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Initial Stop")]
-		[Gui.Design.DisplayName("Number of Bars 1")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("01 Number of Bars")]
         public int IS1NumberOfBars
         {
             get { return is1_NumberOfBars; }
@@ -1441,8 +1661,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Initial Stop")]
-		[Gui.Design.DisplayName("MA Length 1")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("01 MA Length")]
         public int IS1MALength
         {
             get { return is1_MALength; }
@@ -1450,8 +1670,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Initial Stop")]
-		[Gui.Design.DisplayName("MA Type 1")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("01 MA Type")]
         public CTS_MAType IS1MAType
         {
             get { return is1_MAType; }
@@ -1459,20 +1679,130 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Initial Stop")]
-		[Gui.Design.DisplayName("Pip Distance 1")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("01 Pip Distance")]
         public int IS1PipDistance
         {
             get { return is1_PipDistance; }
             set { is1_PipDistance = Math.Max(0, value); }
         }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[RefreshProperties(RefreshProperties.All)]
+		[Gui.Design.DisplayName("02  Initial Stop")]
+        public CTS_InitialStop InitialStop2
+        {
+            get { return initialStop2; }
+            set { initialStop2 = value; }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("02 Pip Buffer")]
+        public int IS2PipBuffer
+        {
+            get { return is2_PipBuffer; }
+            set { is2_PipBuffer = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("02 Number of Bars")]
+        public int IS2NumberOfBars
+        {
+            get { return is2_NumberOfBars; }
+            set { is2_NumberOfBars = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("02 MA Length")]
+        public int IS2MALength
+        {
+            get { return is2_MALength; }
+            set { is2_MALength = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("02 MA Type")]
+        public CTS_MAType IS2MAType
+        {
+            get { return is2_MAType; }
+            set { is2_MAType = value; }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("02 Pip Distance")]
+        public int IS2PipDistance
+        {
+            get { return is2_PipDistance; }
+            set { is2_PipDistance = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[RefreshProperties(RefreshProperties.All)]
+		[Gui.Design.DisplayName("03  Initial Stop")]
+        public CTS_InitialStop InitialStop3
+        {
+            get { return initialStop3; }
+            set { initialStop3 = value; }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("03 Pip Buffer")]
+        public int IS3PipBuffer
+        {
+            get { return is3_PipBuffer; }
+            set { is3_PipBuffer = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("03 Number of Bars")]
+        public int IS3NumberOfBars
+        {
+            get { return is3_NumberOfBars; }
+            set { is3_NumberOfBars = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("03 MA Length")]
+        public int IS3MALength
+        {
+            get { return is3_MALength; }
+            set { is3_MALength = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("03 MA Type")]
+        public CTS_MAType IS3MAType
+        {
+            get { return is3_MAType; }
+            set { is3_MAType = value; }
+        }
+
+        [Description("")]
+        [GridCategory("04. Initial Stop")]
+		[Gui.Design.DisplayName("03 Pip Distance")]
+        public int IS3PipDistance
+        {
+            get { return is3_PipDistance; }
+            set { is3_PipDistance = Math.Max(0, value); }
+        }
 		 #endregion
 		
 		 #region Manage Trade
         [Description("")]
-        [GridCategory("Manage Trade")]
+        [GridCategory("05. Manage Trade")]
 		[RefreshProperties(RefreshProperties.All)]
-		[Gui.Design.DisplayName(" Manage Trade 1")]
+		[Gui.Design.DisplayName("01  Manage Trade")]
         public CTS_ManageTrade ManageTrade1
         {
             get { return manageTrade1; }
@@ -1480,8 +1810,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Pip Buffer 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Pip Buffer")]
         public int MT1PipBuffer
         {
             get { return mt1_PipBuffer; }
@@ -1489,8 +1819,8 @@ namespace NinjaTrader.Strategy
         }
 		
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Ignore Indecision Bars 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Ignore Indecision Bars")]
         public bool MT1IgnoreIndecisionBars
         {
             get { return mt1_IgnoreIndecisionBars; }
@@ -1498,8 +1828,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Activate Only After X Bars 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Activate Only After X Bars")]
         public int MT1ActivateOnlyAfterXBars
         {
             get { return mt1_ActivateOnlyAfterXBars; }
@@ -1507,8 +1837,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Trigger After X Pips 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Trigger After X Pips")]
         public int MT1PipTrigger
         {
             get { return mt1_PipsTrigger; }
@@ -1516,8 +1846,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Min Pip Profit 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Min Pip Profit")]
         public int MT1MinPipsProfit
         {
             get { return mt1_MinPipsProfit; }
@@ -1525,8 +1855,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Percent Retracement 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Percent Retracement")]
         public double MT1PctRetracement
         {
             get { return mt1_PctRetracement; }
@@ -1534,8 +1864,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("X 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 X")]
         public double MT1X
         {
             get { return mt1_X; }
@@ -1543,8 +1873,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("Y 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 Y")]
         public double MT1Y
         {
             get { return mt1_Y; }
@@ -1552,8 +1882,8 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("MA Length 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 MA Length")]
         public int MT1MALength
         {
             get { return mt1_MALength; }
@@ -1561,18 +1891,218 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Manage Trade")]
-		[Gui.Design.DisplayName("MA Type 1")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("01 MA Type")]
         public CTS_MAType MT1MAType
         {
             get { return mt1_MAType; }
             set { mt1_MAType = value; }
         }
+		
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[RefreshProperties(RefreshProperties.All)]
+		[Gui.Design.DisplayName("02  Manage Trade")]
+        public CTS_ManageTrade ManageTrade2
+        {
+            get { return manageTrade2; }
+            set { manageTrade2 = value; }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Pip Buffer")]
+        public int MT2PipBuffer
+        {
+            get { return mt2_PipBuffer; }
+            set { mt2_PipBuffer = Math.Max(0, value); }
+        }
+		
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Ignore Indecision Bars")]
+        public bool MT2IgnoreIndecisionBars
+        {
+            get { return mt2_IgnoreIndecisionBars; }
+            set { mt2_IgnoreIndecisionBars = value; }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Activate Only After X Bars")]
+        public int MT2ActivateOnlyAfterXBars
+        {
+            get { return mt2_ActivateOnlyAfterXBars; }
+            set { mt2_ActivateOnlyAfterXBars = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Trigger After X Pips")]
+        public int MT2PipTrigger
+        {
+            get { return mt2_PipsTrigger; }
+            set { mt2_PipsTrigger = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Min Pip Profit")]
+        public int MT2MinPipsProfit
+        {
+            get { return mt2_MinPipsProfit; }
+            set { mt2_MinPipsProfit = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Percent Retracement")]
+        public double MT2PctRetracement
+        {
+            get { return mt2_PctRetracement; }
+            set { mt2_PctRetracement = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 X")]
+        public double MT2X
+        {
+            get { return mt2_X; }
+            set { mt2_X = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 Y")]
+        public double MT2Y
+        {
+            get { return mt2_Y; }
+            set { mt2_Y = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 MA Length")]
+        public int MT2MALength
+        {
+            get { return mt2_MALength; }
+            set { mt2_MALength = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("02 MA Type")]
+        public CTS_MAType MT2MAType
+        {
+            get { return mt2_MAType; }
+            set { mt2_MAType = value; }
+        }
+		
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[RefreshProperties(RefreshProperties.All)]
+		[Gui.Design.DisplayName("03  Manage Trade")]
+        public CTS_ManageTrade ManageTrade3
+        {
+            get { return manageTrade3; }
+            set { manageTrade3 = value; }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Pip Buffer")]
+        public int MT3PipBuffer
+        {
+            get { return mt3_PipBuffer; }
+            set { mt3_PipBuffer = Math.Max(0, value); }
+        }
+		
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Ignore Indecision Bars")]
+        public bool MT3IgnoreIndecisionBars
+        {
+            get { return mt3_IgnoreIndecisionBars; }
+            set { mt3_IgnoreIndecisionBars = value; }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Activate Only After X Bars")]
+        public int MT3ActivateOnlyAfterXBars
+        {
+            get { return mt3_ActivateOnlyAfterXBars; }
+            set { mt3_ActivateOnlyAfterXBars = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Trigger After X Pips")]
+        public int MT3PipTrigger
+        {
+            get { return mt3_PipsTrigger; }
+            set { mt3_PipsTrigger = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Min Pip Profit")]
+        public int MT3MinPipsProfit
+        {
+            get { return mt3_MinPipsProfit; }
+            set { mt3_MinPipsProfit = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Percent Retracement")]
+        public double MT3PctRetracement
+        {
+            get { return mt3_PctRetracement; }
+            set { mt3_PctRetracement = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 X")]
+        public double MT3X
+        {
+            get { return mt3_X; }
+            set { mt3_X = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 Y")]
+        public double MT3Y
+        {
+            get { return mt3_Y; }
+            set { mt3_Y = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 MA Length")]
+        public int MT3MALength
+        {
+            get { return mt3_MALength; }
+            set { mt3_MALength = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("05. Manage Trade")]
+		[Gui.Design.DisplayName("03 MA Type")]
+        public CTS_MAType MT3MAType
+        {
+            get { return mt3_MAType; }
+            set { mt3_MAType = value; }
+        }
 		 #endregion
 
 		 #region Conditions To Enter
         [Description("")]
-        [GridCategory("Conditions To Enter")]
+        [GridCategory("06. Conditions To Enter")]
 		[RefreshProperties(RefreshProperties.All)]
 		[Gui.Design.DisplayName(" Conditions To Enter 1")]
         public CTS_ConditionsToEnter ConditionsToEnter1
@@ -1582,7 +2112,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Conditions To Enter")]
+        [GridCategory("06. Conditions To Enter")]
 		[Gui.Design.DisplayName("Percentage 1")]
         public double CE1Pct
         {
@@ -1591,7 +2121,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Conditions To Enter")]
+        [GridCategory("06. Conditions To Enter")]
 		[Gui.Design.DisplayName("X 1")]
         public double CE1X
         {
@@ -1600,7 +2130,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Conditions To Enter")]
+        [GridCategory("06. Conditions To Enter")]
 		[Gui.Design.DisplayName("Slope 1")]
         public double CE1Slope
         {
@@ -1609,7 +2139,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Conditions To Enter")]
+        [GridCategory("06. Conditions To Enter")]
 		[Gui.Design.DisplayName("MA Length 1")]
         public int CE1MALength
         {
@@ -1618,7 +2148,7 @@ namespace NinjaTrader.Strategy
         }
 
         [Description("")]
-        [GridCategory("Conditions To Enter")]
+        [GridCategory("06. Conditions To Enter")]
 		[Gui.Design.DisplayName("MA Type 1")]
         public CTS_MAType CE1MAType
         {
@@ -1628,7 +2158,7 @@ namespace NinjaTrader.Strategy
 		 #endregion
 
         [Description("")]
-        [GridCategory("Parameters")]
+        [GridCategory("07. Strategy Parameters")]
         public int Quantity
         {
             get { return quantity; }
@@ -1850,6 +2380,8 @@ namespace NinjaTrader.Strategy
 					break;
 
 				case CTS_Location.AtOrNearMA:
+				case CTS_Location.AboveMA:
+				case CTS_Location.BelowMA:
 					col.Remove(col.Find("LocBBDeviation", true));
 					col.Remove(col.Find("LocBBBodyPct", true));
 					break;
@@ -1903,6 +2435,64 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IS1PipDistance", true));
 					col.Remove(col.Find("IS1MALength", true));
 					col.Remove(col.Find("IS1MAType", true));
+					break;
+			}
+			
+			switch(InitialStop2)
+			{
+				case CTS_InitialStop.EntryBarHighOrLow:
+				case CTS_InitialStop.EntryBarClose:
+					col.Remove(col.Find("IS2NumberOfBars", true));
+					col.Remove(col.Find("IS2PipDistance", true));
+					col.Remove(col.Find("IS2MALength", true));
+					col.Remove(col.Find("IS2MAType", true));
+					break;
+
+				case CTS_InitialStop.PreviousBars:
+					col.Remove(col.Find("IS2PipDistance", true));
+					col.Remove(col.Find("IS2MALength", true));
+					col.Remove(col.Find("IS2MAType", true));
+					break;
+
+				case CTS_InitialStop.AboveOrBelowMA:
+					col.Remove(col.Find("IS2NumberOfBars", true));
+					break;
+
+				default:
+					col.Remove(col.Find("IS2NumberOfBars", true));
+					col.Remove(col.Find("IS2PipBuffer", true));
+					col.Remove(col.Find("IS2PipDistance", true));
+					col.Remove(col.Find("IS2MALength", true));
+					col.Remove(col.Find("IS2MAType", true));
+					break;
+			}
+			
+			switch(InitialStop3)
+			{
+				case CTS_InitialStop.EntryBarHighOrLow:
+				case CTS_InitialStop.EntryBarClose:
+					col.Remove(col.Find("IS3NumberOfBars", true));
+					col.Remove(col.Find("IS3PipDistance", true));
+					col.Remove(col.Find("IS3MALength", true));
+					col.Remove(col.Find("IS3MAType", true));
+					break;
+
+				case CTS_InitialStop.PreviousBars:
+					col.Remove(col.Find("IS3PipDistance", true));
+					col.Remove(col.Find("IS3MALength", true));
+					col.Remove(col.Find("IS3MAType", true));
+					break;
+
+				case CTS_InitialStop.AboveOrBelowMA:
+					col.Remove(col.Find("IS3NumberOfBars", true));
+					break;
+
+				default:
+					col.Remove(col.Find("IS3NumberOfBars", true));
+					col.Remove(col.Find("IS3PipBuffer", true));
+					col.Remove(col.Find("IS3PipDistance", true));
+					col.Remove(col.Find("IS3MALength", true));
+					col.Remove(col.Find("IS3MAType", true));
 					break;
 			}
 			
@@ -1982,6 +2572,164 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MT1Y", true));
 					col.Remove(col.Find("MT1MALength", true));
 					col.Remove(col.Find("MT1MAType", true));
+					break;
+			}
+			
+			switch(ManageTrade2)
+			{
+				case CTS_ManageTrade.MoveStopToNextBarHighLow:
+				case CTS_ManageTrade.MoveStopToNextBarClose:
+					col.Remove(col.Find("MT2PipTrigger", true));
+					col.Remove(col.Find("MT2MinPipsProfit", true));
+					col.Remove(col.Find("MT2PctRetracement", true));
+					col.Remove(col.Find("MT2X", true));
+					col.Remove(col.Find("MT2Y", true));
+					col.Remove(col.Find("MT2MALength", true));
+					col.Remove(col.Find("MT2MAType", true));
+					break;
+				
+				case CTS_ManageTrade.MoveStopToBreakEven:
+					col.Remove(col.Find("MT2PipBuffer", true));
+					col.Remove(col.Find("MT2IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT2PctRetracement", true));
+					col.Remove(col.Find("MT2X", true));
+					col.Remove(col.Find("MT2Y", true));
+					col.Remove(col.Find("MT2MALength", true));
+					col.Remove(col.Find("MT2MAType", true));
+					break;
+				
+				case CTS_ManageTrade.TakeXPercentAtYto1:
+				case CTS_ManageTrade.CloseAtXtoY:
+					col.Remove(col.Find("MT2PipBuffer", true));
+					col.Remove(col.Find("MT2IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT2PipTrigger", true));
+					col.Remove(col.Find("MT2MinPipsProfit", true));
+					col.Remove(col.Find("MT2PctRetracement", true));
+					col.Remove(col.Find("MT2MALength", true));
+					col.Remove(col.Find("MT2MAType", true));
+					break;
+
+				case CTS_ManageTrade.CloseWithXPipsInProfit:
+					col.Remove(col.Find("MT2PipBuffer", true));
+					col.Remove(col.Find("MT2IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT2PipTrigger", true));
+					col.Remove(col.Find("MT2PctRetracement", true));
+					col.Remove(col.Find("MT2X", true));
+					col.Remove(col.Find("MT2Y", true));
+					col.Remove(col.Find("MT2MALength", true));
+					col.Remove(col.Find("MT2MAType", true));
+					break;
+					
+				case CTS_ManageTrade.MATrailingStop:
+					col.Remove(col.Find("MT2PipBuffer", true));
+					col.Remove(col.Find("MT2IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT2PipTrigger", true));
+					col.Remove(col.Find("MT2MinPipsProfit", true));
+					col.Remove(col.Find("MT2PctRetracement", true));
+					col.Remove(col.Find("MT2Y", true));
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtFiboRetracementOfLastSwing:
+					col.Remove(col.Find("MT2PipBuffer", true));
+					col.Remove(col.Find("MT2IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT2ActivateOnlyAfterXBars", true));
+					col.Remove(col.Find("MT2PipTrigger", true));
+					col.Remove(col.Find("MT2MinPipsProfit", true));
+					col.Remove(col.Find("MT2Y", true));
+					col.Remove(col.Find("MT2MALength", true));
+					col.Remove(col.Find("MT2MAType", true));
+					break;
+					
+				default:
+					col.Remove(col.Find("MT2PipBuffer", true));
+					col.Remove(col.Find("MT2IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT2ActivateOnlyAfterXBars", true));
+					col.Remove(col.Find("MT2PipTrigger", true));
+					col.Remove(col.Find("MT2MinPipsProfit", true));
+					col.Remove(col.Find("MT2PctRetracement", true));
+					col.Remove(col.Find("MT2X", true));
+					col.Remove(col.Find("MT2Y", true));
+					col.Remove(col.Find("MT2MALength", true));
+					col.Remove(col.Find("MT2MAType", true));
+					break;
+			}
+			
+			switch(ManageTrade3)
+			{
+				case CTS_ManageTrade.MoveStopToNextBarHighLow:
+				case CTS_ManageTrade.MoveStopToNextBarClose:
+					col.Remove(col.Find("MT3PipTrigger", true));
+					col.Remove(col.Find("MT3MinPipsProfit", true));
+					col.Remove(col.Find("MT3PctRetracement", true));
+					col.Remove(col.Find("MT3X", true));
+					col.Remove(col.Find("MT3Y", true));
+					col.Remove(col.Find("MT3MALength", true));
+					col.Remove(col.Find("MT3MAType", true));
+					break;
+				
+				case CTS_ManageTrade.MoveStopToBreakEven:
+					col.Remove(col.Find("MT3PipBuffer", true));
+					col.Remove(col.Find("MT3IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT3PctRetracement", true));
+					col.Remove(col.Find("MT3X", true));
+					col.Remove(col.Find("MT3Y", true));
+					col.Remove(col.Find("MT3MALength", true));
+					col.Remove(col.Find("MT3MAType", true));
+					break;
+				
+				case CTS_ManageTrade.TakeXPercentAtYto1:
+				case CTS_ManageTrade.CloseAtXtoY:
+					col.Remove(col.Find("MT3PipBuffer", true));
+					col.Remove(col.Find("MT3IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT3PipTrigger", true));
+					col.Remove(col.Find("MT3MinPipsProfit", true));
+					col.Remove(col.Find("MT3PctRetracement", true));
+					col.Remove(col.Find("MT3MALength", true));
+					col.Remove(col.Find("MT3MAType", true));
+					break;
+
+				case CTS_ManageTrade.CloseWithXPipsInProfit:
+					col.Remove(col.Find("MT3PipBuffer", true));
+					col.Remove(col.Find("MT3IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT3PipTrigger", true));
+					col.Remove(col.Find("MT3PctRetracement", true));
+					col.Remove(col.Find("MT3X", true));
+					col.Remove(col.Find("MT3Y", true));
+					col.Remove(col.Find("MT3MALength", true));
+					col.Remove(col.Find("MT3MAType", true));
+					break;
+					
+				case CTS_ManageTrade.MATrailingStop:
+					col.Remove(col.Find("MT3PipBuffer", true));
+					col.Remove(col.Find("MT3IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT3PipTrigger", true));
+					col.Remove(col.Find("MT3MinPipsProfit", true));
+					col.Remove(col.Find("MT3PctRetracement", true));
+					col.Remove(col.Find("MT3Y", true));
+					break;
+					
+				case CTS_ManageTrade.TakeXPercentAtFiboRetracementOfLastSwing:
+					col.Remove(col.Find("MT3PipBuffer", true));
+					col.Remove(col.Find("MT3IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT3ActivateOnlyAfterXBars", true));
+					col.Remove(col.Find("MT3PipTrigger", true));
+					col.Remove(col.Find("MT3MinPipsProfit", true));
+					col.Remove(col.Find("MT3Y", true));
+					col.Remove(col.Find("MT3MALength", true));
+					col.Remove(col.Find("MT3MAType", true));
+					break;
+					
+				default:
+					col.Remove(col.Find("MT3PipBuffer", true));
+					col.Remove(col.Find("MT3IgnoreIndecisionBars", true));
+					col.Remove(col.Find("MT3ActivateOnlyAfterXBars", true));
+					col.Remove(col.Find("MT3PipTrigger", true));
+					col.Remove(col.Find("MT3MinPipsProfit", true));
+					col.Remove(col.Find("MT3PctRetracement", true));
+					col.Remove(col.Find("MT3X", true));
+					col.Remove(col.Find("MT3Y", true));
+					col.Remove(col.Find("MT3MALength", true));
+					col.Remove(col.Find("MT3MAType", true));
 					break;
 			}
 			
@@ -2139,41 +2887,43 @@ namespace NinjaTrader.Strategy
 	#region Enums
 	public enum CTS_TradableEvent
 	{
-		AnyBar,
-		BullIgnitingElephantBar,
-		BearIgnitingElephantBar,
-		BullExhaustionElephantBar,
-		BearExhaustionElephantBar,
-		BullBodyEngulfing,
-		BearBodyEngulfing,
-		BullBodyEngulfingOppositeColor,
-		BearBodyEngulfingOppositeColor,
-		BullBodyEngulfingIgniting,
-		BearBodyEngulfingIgniting,
-		BullBodyEngulfingOppositeColorIgniting,
-		BearBodyEngulfingOppositeColorIgniting,
-		BodyEngulfing,
-		BullElephantBar,
-		BearElephantBar,
-		Igniting,
-		Exhausting,
-		IndecisionBar,
 		AlertBar,
-		DarkCloudCover,
-		PiercingLine,
-		Doji,
-		Hammer,
-		NarrowRangeBar,
-		VelezBuySetup,
-		VelezSellSetup,
+		AnyBar,
+		BearBodyEngulfing,
+		BearBodyEngulfingIgniting,
+		BearBodyEngulfingOppositeColor,
+		BearBodyEngulfingOppositeColorIgniting,
+		BearElephantBar,
+		BearExhaustionElephantBar,
+		BearIgnitingElephantBar,
+		BodyEngulfing,
 		BottomingTailSetup,
-		ToppingTailSetup
+		BullBodyEngulfing,
+		BullBodyEngulfingIgniting,
+		BullBodyEngulfingOppositeColor,
+		BullBodyEngulfingOppositeColorIgniting,
+		BullElephantBar,
+		BullExhaustionElephantBar,
+		BullIgnitingElephantBar,
+		DarkCloudCover,
+		Doji,
+		Exhausting,
+		Hammer,
+		Igniting,
+		IndecisionBar,
+		NarrowRangeBar,
+		PiercingLine,
+		ToppingTailSetup,
+		VelezBuySetup,
+		VelezSellSetup
 	}
 	
 	public enum CTS_Location
 	{
 		Anywhere,
 		AtOrNearMA,
+		AboveMA,
+		BelowMA,
 		BreakingUpperBollingerBand,
 		BreakingLowerBollingerBand
 	}
@@ -2195,22 +2945,22 @@ namespace NinjaTrader.Strategy
 	public enum CTS_InitialStop
 	{
 		NotUsed,
+		AboveOrBelowMA,
 		EntryBarHighOrLow,
 		EntryBarClose,
-		PreviousBars,
-		AboveOrBelowMA
+		PreviousBars
 	}
 	
 	public enum CTS_ManageTrade
 	{
 		NotUsed,
-		MoveStopToNextBarHighLow,
-		MoveStopToNextBarClose,
-		MoveStopToBreakEven,
-		TakeXPercentAtYto1,
 		CloseAtXtoY,
 		CloseWithXPipsInProfit,
 		MATrailingStop,
+		MoveStopToBreakEven,
+		MoveStopToNextBarClose,
+		MoveStopToNextBarHighLow,
+		TakeXPercentAtYto1,
 		TakeXPercentAtFiboRetracementOfLastSwing
 	}
 	

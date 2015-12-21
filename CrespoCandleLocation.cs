@@ -53,7 +53,7 @@ namespace NinjaTrader.Indicator
         /// </summary>
         protected override void Initialize()
         {
-            Add(new Plot(Color.FromKnownColor(KnownColor.Yellow), PlotStyle.Cross, "Pattern"));
+            Add(new Plot(Color.FromKnownColor(KnownColor.Fuchsia), PlotStyle.Dot, "Pattern"));
 			Plots[0].Pen.Width = 4;
             Overlay				= true;
         }
@@ -796,42 +796,92 @@ namespace NinjaTrader.Indicator
 		{
 			if(Location == CTS_Location.AtOrNearMA)
 			{
-				double dMA = MA(LocMALength, LocMAType, 0);
-				if(High[0] >= dMA - LocPipDistance*TickSize && Low[0] <= dMA + LocPipDistance*TickSize)
-				{
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				return LocationAtOrNearMA(LocMALength, LocMAType, LocPipDistance);
+			}
+			else if(Location == CTS_Location.AboveMA)
+			{
+				return LocationAboveMA(LocMALength, LocMAType, LocPipDistance);
+			}
+			else if(Location == CTS_Location.BelowMA)
+			{
+				return LocationBelowMA(LocMALength, LocMAType, LocPipDistance);
 			}
 			else if(Location == CTS_Location.BreakingUpperBollingerBand)
 			{
-				double dBB = Bollinger(LocBBDeviation, LocMALength).Upper[0];
-				if(High[0] >= dBB + Range(0)*LocBBBodyPct)
-				{
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				return LocationBreakingUpperBollingerBand(LocBBBodyPct, LocBBDeviation, LocMALength);
 			}
 			else if(Location == CTS_Location.BreakingLowerBollingerBand)
 			{
-				double dBB = Bollinger(LocBBDeviation, LocMALength).Lower[0];
-				if(Low[0] <= dBB - Range(0)*LocBBBodyPct)
-				{
-					return true;
-				}
-				else
-				{
-					return false;
-				}
+				return LocationBreakingLowerBollingerBand(LocBBBodyPct, LocBBDeviation, LocMALength);
 			}
 			
 			return true;
+		}
+		
+		private bool LocationAtOrNearMA(int period, CTS_MAType type, int distanceForNear)
+		{
+			double dMA = MA(period, type, 0);
+			if(High[0] >= dMA - distanceForNear*TickSize && Low[0] <= dMA + distanceForNear*TickSize)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+			
+		}
+		
+		private bool LocationAboveMA(int period, CTS_MAType type, int minDistance)
+		{
+			double dMA = MA(period, type, 0);
+			if(Low[0] >= dMA + minDistance*TickSize)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		private bool LocationBelowMA(int period, CTS_MAType type, int minDistance)
+		{
+			double dMA = MA(period, type, 0);
+			if(High[0] <= dMA - minDistance*TickSize)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		private bool LocationBreakingUpperBollingerBand(double pct, double stdDeviation, int period)
+		{
+			double dBB = Bollinger(stdDeviation, period).Upper[0];
+			if(High[0] >= dBB + Range(0)*pct)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		
+		private bool LocationBreakingLowerBollingerBand(double pct, double stdDeviation, int period)
+		{
+			double dBB = Bollinger(stdDeviation, period).Lower[0];
+			if(Low[0] <= dBB - Range(0)*pct)
+			{
+				return true;
+			}
+			else
+			{
+				return false;
+			}
 		}
 		#endregion
 
@@ -988,7 +1038,7 @@ namespace NinjaTrader.Indicator
 		 #region Location
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[RefreshProperties(RefreshProperties.All)]
 		[Gui.Design.DisplayName(" Location")]
         public NinjaTrader.Indicator.CTS_Location Location
@@ -998,7 +1048,7 @@ namespace NinjaTrader.Indicator
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("MA Length")]
         public int LocMALength
         {
@@ -1007,7 +1057,7 @@ namespace NinjaTrader.Indicator
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("MA Type")]
         public NinjaTrader.Indicator.CTS_MAType LocMAType
         {
@@ -1016,7 +1066,7 @@ namespace NinjaTrader.Indicator
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("Pip Distance")]
         public int LocPipDistance
         {
@@ -1025,7 +1075,7 @@ namespace NinjaTrader.Indicator
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("BB Deviation")]
         public double LocBBDeviation
         {
@@ -1034,7 +1084,7 @@ namespace NinjaTrader.Indicator
         }
 
         [Description("")]
-        [GridCategory("Location")]
+        [GridCategory("02. Location")]
 		[Gui.Design.DisplayName("BB Body Percent")]
         public double LocBBBodyPct
         {
@@ -1258,6 +1308,8 @@ namespace NinjaTrader.Indicator
 					break;
 
 				case CTS_Location.AtOrNearMA:
+				case CTS_Location.AboveMA:
+				case CTS_Location.BelowMA:
 					col.Remove(col.Find("LocBBDeviation", true));
 					col.Remove(col.Find("LocBBBodyPct", true));
 					break;
@@ -1355,41 +1407,43 @@ namespace NinjaTrader.Indicator
 	
 	public enum CTS_TradableEvent
 	{
-		AnyBar,
-		BullIgnitingElephantBar,
-		BearIgnitingElephantBar,
-		BullExhaustionElephantBar,
-		BearExhaustionElephantBar,
-		BullBodyEngulfing,
-		BearBodyEngulfing,
-		BullBodyEngulfingOppositeColor,
-		BearBodyEngulfingOppositeColor,
-		BullBodyEngulfingIgniting,
-		BearBodyEngulfingIgniting,
-		BullBodyEngulfingOppositeColorIgniting,
-		BearBodyEngulfingOppositeColorIgniting,
-		BodyEngulfing,
-		BullElephantBar,
-		BearElephantBar,
-		Igniting,
-		Exhausting,
-		IndecisionBar,
 		AlertBar,
-		DarkCloudCover,
-		PiercingLine,
-		Doji,
-		Hammer,
-		NarrowRangeBar,
-		VelezBuySetup,
-		VelezSellSetup,
+		AnyBar,
+		BearBodyEngulfing,
+		BearBodyEngulfingIgniting,
+		BearBodyEngulfingOppositeColor,
+		BearBodyEngulfingOppositeColorIgniting,
+		BearElephantBar,
+		BearExhaustionElephantBar,
+		BearIgnitingElephantBar,
+		BodyEngulfing,
 		BottomingTailSetup,
-		ToppingTailSetup
+		BullBodyEngulfing,
+		BullBodyEngulfingIgniting,
+		BullBodyEngulfingOppositeColor,
+		BullBodyEngulfingOppositeColorIgniting,
+		BullElephantBar,
+		BullExhaustionElephantBar,
+		BullIgnitingElephantBar,
+		DarkCloudCover,
+		Doji,
+		Exhausting,
+		Hammer,
+		Igniting,
+		IndecisionBar,
+		NarrowRangeBar,
+		PiercingLine,
+		ToppingTailSetup,
+		VelezBuySetup,
+		VelezSellSetup
 	}
 	
 	public enum CTS_Location
 	{
 		Anywhere,
 		AtOrNearMA,
+		BelowMA,
+		AboveMA,
 		BreakingUpperBollingerBand,
 		BreakingLowerBollingerBand
 	}
