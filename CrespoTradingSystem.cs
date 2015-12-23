@@ -128,8 +128,10 @@ namespace NinjaTrader.Strategy
 		
 		// User defined variables (add any user defined variables below)
 		private double theStop = 0;
+		private double lastStop = 0;
 		private double initialStop = 0;
 		private int entryBar = 0;
+		private int tradedir = 0;
         #endregion
 
         /// <summary>
@@ -145,6 +147,58 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void OnBarUpdate()
         {
+			if(CurrentBar < 50) return;
+			
+			if(Position.MarketPosition == MarketPosition.Flat)
+			{
+				tradedir = 0;
+				bool isPattern = IsCandlestickPattern();
+				bool isLocation = CheckLocation();
+				
+				if(isPattern && isLocation)
+				{
+					if(tradedir > 0)
+					{
+						double price = GetBuyEntryPrice(this.TradeEntry);
+						initialStop = GetBestBuyStop();
+						theStop = initialStop;
+						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
+						{
+							EnterLong(Quantity);
+						}
+						else if(price > GetCurrentAsk())
+						{
+							EnterLongStop(Quantity, price);
+						}
+						else if(price < GetCurrentBid())
+						{
+							EnterLongLimit(Quantity, price);
+						}
+					}
+					else if(tradedir < 0)
+					{
+						double price = GetSellEntryPrice(this.TradeEntry);
+						initialStop = GetBestSellStop();
+						theStop = initialStop;
+						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
+						{
+							EnterShort(Quantity);
+						}
+						else if(price > GetCurrentAsk())
+						{
+							EnterShortLimit(Quantity, price);
+						}
+						else if(price < GetCurrentBid())
+						{
+							EnterShortStop(Quantity, price);
+						}
+					}
+				}
+			}
+			else
+			{
+				ManageTrade();
+			}
         }
 		
 		private CTS_TradableEvent GetCandleStickPattern(int shift)
@@ -167,6 +221,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -174,6 +229,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -181,6 +237,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -188,6 +245,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -195,6 +253,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -202,6 +261,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -209,6 +269,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -216,6 +277,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -223,6 +285,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -230,6 +293,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -237,6 +301,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -244,6 +309,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -279,6 +345,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -286,6 +353,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -300,6 +368,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -307,6 +376,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -314,6 +384,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -321,6 +392,7 @@ namespace NinjaTrader.Strategy
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -1290,7 +1362,7 @@ namespace NinjaTrader.Strategy
 		{
 		}
 		
-		private void ManageStop()
+		private void ManageTrade()
 		{
 			 switch(ManageTrade1)
 			{
@@ -1399,11 +1471,35 @@ namespace NinjaTrader.Strategy
 			
 			if(Position.MarketPosition == MarketPosition.Long)
 			{
+				if(theStop >= Close[0])
+				{
+					if(lastStop < Close[0])
+					{
+						theStop = lastStop;
+					}
+					else
+					{
+						theStop = Close[0] - TickSize;
+					}
+				}
 				ExitLongStop(theStop);
+				lastStop = theStop;
 			}
 			if(Position.MarketPosition == MarketPosition.Short)
 			{
+				if(theStop <= Close[0])
+				{
+					if(lastStop > Close[0])
+					{
+						theStop = lastStop;
+					}
+					else
+					{
+						theStop = Close[0] + TickSize;
+					}
+				}
 				ExitShortStop(theStop);
+				lastStop = theStop;
 			}
 		}
 		#endregion
