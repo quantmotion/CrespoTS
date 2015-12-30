@@ -162,6 +162,7 @@ namespace NinjaTrader.Strategy
 						double price = GetBuyEntryPrice(this.TradeEntry);
 						initialStop = GetBestBuyStop();
 						theStop = initialStop;
+						entryBar = CurrentBar;
 						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
 						{
 							EnterLong(Quantity);
@@ -180,6 +181,7 @@ namespace NinjaTrader.Strategy
 						double price = GetSellEntryPrice(this.TradeEntry);
 						initialStop = GetBestSellStop();
 						theStop = initialStop;
+						entryBar = CurrentBar;
 						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
 						{
 							EnterShort(Quantity);
