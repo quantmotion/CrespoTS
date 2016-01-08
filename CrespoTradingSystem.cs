@@ -24,6 +24,7 @@ namespace NinjaTrader.Strategy
         #region Variables
         // Wizard generated variables
         private int quantity = 1; // Default setting for Quantity
+		private int maximumStopLoss = 100;
         
 		// Tradeable Events
         private NinjaTrader.Strategy.CTS_TradableEvent tradableEvent = CTS_TradableEvent.AnyBar; // Default setting for TradedableEvent
@@ -43,6 +44,12 @@ namespace NinjaTrader.Strategy
 		private bool ignoreIndecisionBars = false;
 		private CTS_BodyOrTotalSize compareBodyOrTotalSize = CTS_BodyOrTotalSize.Body;
 		private double atLeastXPctTheSizeOfPreviousBar = 1.1;
+		private double longWickMinPct = 0.7;
+		private double shortWickMaxPct = 0.05;
+		private double longWickPctAbovePreviousHigh = 0.5;
+		private double openAndClosePctLocation = 0.3;
+		private bool notPinBarIfInsideBar = true;
+		private int barsToLookBack = 2;
         
 		// Location
         private NinjaTrader.Strategy.CTS_Location location = CTS_Location.Anywhere; // Default setting for Location
@@ -55,6 +62,7 @@ namespace NinjaTrader.Strategy
         // TradeEntry
 		private CTS_TradeEntry tradeEntry = CTS_TradeEntry.Immediately; // Default setting for TradeEntry
 		private int te_PipBuffer = 3;
+		private double te_pctRetracement = 0.5;
 		
 		// Initial Stop
 		// Initial Stop 1
@@ -161,7 +169,9 @@ namespace NinjaTrader.Strategy
 					{
 						double price = GetBuyEntryPrice(this.TradeEntry);
 						initialStop = GetBestBuyStop();
+						initialStop = Math.Max(initialStop, price - MaximumStopLoss*TickSize);
 						theStop = initialStop;
+						lastStop = theStop;
 						entryBar = CurrentBar;
 						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
 						{
@@ -175,12 +185,15 @@ namespace NinjaTrader.Strategy
 						{
 							EnterLongLimit(Quantity, price);
 						}
+						Print(Time[0].ToString() + "  Buy Signal. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 					}
 					else if(tradedir < 0)
 					{
 						double price = GetSellEntryPrice(this.TradeEntry);
 						initialStop = GetBestSellStop();
+						initialStop = Math.Min(initialStop, price + MaximumStopLoss*TickSize);
 						theStop = initialStop;
+						lastStop = theStop;
 						entryBar = CurrentBar;
 						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
 						{
@@ -194,6 +207,7 @@ namespace NinjaTrader.Strategy
 						{
 							EnterShortStop(Quantity, price);
 						}
+						Print(Time[0].ToString() + "  Sell Signal. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 					}
 				}
 			}
@@ -336,7 +350,7 @@ namespace NinjaTrader.Strategy
 				return true;
 			}
 			
-			pattern = IsIndecisionBar(pipMaxBodySize, bodyPctOfTotalBarSize, 0) && TradableEvent == CTS_TradableEvent.IndecisionBar;
+			pattern = IsIndecisionBar(bodyPctOfTotalBarSize, 0) && TradableEvent == CTS_TradableEvent.IndecisionBar;
 			
 			if(pattern)
 			{
@@ -360,6 +374,34 @@ namespace NinjaTrader.Strategy
 			}
 			
 			pattern = IsNarrowRangeBar(0) && TradableEvent == CTS_TradableEvent.NarrowRangeBar;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarTop(0) && TradableEvent == CTS_TradableEvent.PinBarTop;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarBottom(0) && TradableEvent == CTS_TradableEvent.PinBarBottom;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarTopInsideBarCombo(0) && TradableEvent == CTS_TradableEvent.PinBarTopInsideBarCombo;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarBottomInsideBarCombo(0) && TradableEvent == CTS_TradableEvent.PinBarBottomInsideBarCombo;
 			
 			if(pattern)
 			{
@@ -505,6 +547,21 @@ namespace NinjaTrader.Strategy
 			return false;	
 		}
 	
+		private bool IsInsideBar(int prevBarMinSize, int engulfingBarMinSize, double atLeastXPctTheSizeOfPreviousBar , int shift)
+		{
+			double barBody = Body(shift);
+			double prevBarBody = Body(shift+1);
+			
+			if(barBody > prevBarMinSize*TickSize && 
+				prevBarBody > engulfingBarMinSize*TickSize &&
+				prevBarBody > barBody &&
+				prevBarBody >= atLeastXPctTheSizeOfPreviousBar*barBody)
+			{
+				return true;
+			}
+			return false;	
+		}
+	
 	/*	returns true if the body of the bar is pipBodySize the size of any of the previous numPreviousBars bars. AND
 		(if it's a green bar, it has an upper wick that is not more than wickPercentage of the bar OR
 		if it's a red bar,  it has an lower wick that is not more than wickPercentage of the bar)*/
@@ -586,12 +643,12 @@ namespace NinjaTrader.Strategy
 	/*	(returns true if the bar is an indecision bar. )
 		An indecision bar is a bar with a body that is is pipMaxBodySize pips or less and the body is bodyPctOfTotalBarSize or less of the bar's size. 	
 		So if IndecisionBar(3, 0.3), it means that the maximum bodi size of this bar is 3 (or less) and the body is maximum of 30% (or less) of the total size of the bar, then this will return true*/
-		private bool IsIndecisionBar(int pipMaxBodySize, double bodyPctOfTotalBarSize, int shift)
+		private bool IsIndecisionBar(double bodyPctOfTotalBarSize, int shift)
 		{
 			double barBody = Body(shift);
 			double barRange = Range(shift);
 			
-			if(barBody < pipMaxBodySize*TickSize && barBody <= barRange*bodyPctOfTotalBarSize)
+			if(barBody <= barRange*bodyPctOfTotalBarSize)
 			{
 				return true;
 			}
@@ -683,7 +740,10 @@ namespace NinjaTrader.Strategy
 		isgreen is true */
 		private bool IsBullBodyEngulfing(int shift)
 		{
-			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] > Close[shift+1] && IsGreen(shift))
+			double barSize = Range(shift);
+			double topWickPct = TopWick(shift)/barSize;
+			
+			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] > Close[shift+1] && IsGreen(shift) && topWickPct <= MaxWickPct)
 			{
 				return true;
 			}
@@ -696,7 +756,10 @@ namespace NinjaTrader.Strategy
 
 		private bool IsBearBodyEngulfing(int shift)
 		{
-			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] < Close[shift+1] && IsRed(shift))
+			double barSize = Range(shift);
+			double bottomWickPct = BottomWick(shift)/barSize;
+			
+			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] < Close[shift+1] && IsRed(shift) && bottomWickPct <= MaxWickPct)
 			{
 				return true;
 			}
@@ -744,11 +807,103 @@ namespace NinjaTrader.Strategy
 		
 		private bool IsPinBarTop(int shift)
 		{
+			if(notPinBarIfInsideBar && IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift))
+				return false;
+			
+			double barSize = Range(shift);
+			double topWickPct = TopWick(shift)/barSize;
+			double bottomWickPct = BottomWick(shift)/barSize;
+			
+			if(topWickPct >= longWickMinPct && bottomWickPct <= shortWickMaxPct && High[shift] > High[shift+1] && High[shift] - High[shift+1] > TopWick(shift)*longWickPctAbovePreviousHigh && Math.Max(Open[shift], Close[shift]) <= Low[shift] + barSize*openAndClosePctLocation)
+			{
+				return true;
+			}
+			
 			return false;
 		}
 		
 		private bool IsPinBarBottom(int shift)
 		{
+			if(notPinBarIfInsideBar && IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift))
+				return false;
+			
+			double barSize = Range(shift);
+			double topWickPct = TopWick(shift)/barSize;
+			double bottomWickPct = BottomWick(shift)/barSize;
+			
+			if(bottomWickPct >= longWickMinPct && topWickPct <= shortWickMaxPct && Low[shift] < Low[shift+1] && Low[shift+1] - Low[shift] > BottomWick(shift)*longWickPctAbovePreviousHigh && Math.Min(Open[shift], Close[shift]) >= High[shift] - barSize*openAndClosePctLocation)
+			{
+				return true;
+			}
+			
+			return false;
+		}
+		
+		private bool IsPinBarTopInsideBarCombo(int shift)
+		{
+			int pinbar = -1;
+			
+			for(int i = 1; i < barsToLookBack; i++)
+			{
+				if(IsPinBarTop(i))
+				{
+					pinbar = i;
+					break;
+				}
+			}
+			
+			if(pinbar > 0)
+			{
+				bool inside = true;
+				for(int i = 0; i < pinbar; i++)
+				{
+					if(!IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, i))
+					{
+						inside = false;
+						break;
+					}
+				}
+				
+				if(inside)
+				{
+					return true;
+				}
+			}
+			
+			return false;
+		}
+		
+		private bool IsPinBarBottomInsideBarCombo(int shift)
+		{
+			int pinbar = -1;
+			
+			for(int i = 1; i < barsToLookBack; i++)
+			{
+				if(IsPinBarBottom(i))
+				{
+					pinbar = i;
+					break;
+				}
+			}
+			
+			if(pinbar > 0)
+			{
+				bool inside = true;
+				for(int i = 0; i < pinbar; i++)
+				{
+					if(!IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, i))
+					{
+						inside = false;
+						break;
+					}
+				}
+				
+				if(inside)
+				{
+					return true;
+				}
+			}
+			
 			return false;
 		}
 		
@@ -777,7 +932,7 @@ namespace NinjaTrader.Strategy
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -822,7 +977,7 @@ namespace NinjaTrader.Strategy
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -867,7 +1022,7 @@ namespace NinjaTrader.Strategy
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -911,7 +1066,7 @@ namespace NinjaTrader.Strategy
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -1057,6 +1212,10 @@ namespace NinjaTrader.Strategy
 				case CTS_TradeEntry.PreviousBarHighOrLow:
 					return (High[1] + TEPipBuffer*TickSize);
 					break;
+					
+				case CTS_TradeEntry.BarRetracement:
+					return (High[0] - Range(0)*TEPctRetracement);
+					break;
 			}
 			return GetCurrentAsk();
 		}
@@ -1079,6 +1238,10 @@ namespace NinjaTrader.Strategy
 					
 				case CTS_TradeEntry.PreviousBarHighOrLow:
 					return (Low[1] - TEPipBuffer*TickSize);
+					break;
+					
+				case CTS_TradeEntry.BarRetracement:
+					return (Low[0] + Range(0)*TEPctRetracement);
 					break;
 			}
 			return GetCurrentBid();
@@ -1182,7 +1345,7 @@ namespace NinjaTrader.Strategy
 		#region Manage Trade
 		private void MoveStopToNextBarHighLow(int buffer, bool ignoreIndecisionBars, int activateOnlyAfterXBars)
 		{
-			if(ignoreIndecisionBars && IsIndecisionBar(pipMaxBodySize, bodyPctOfTotalBarSize, 0))
+			if(ignoreIndecisionBars && IsIndecisionBar(bodyPctOfTotalBarSize, 0))
 			{
 				return;
 			}
@@ -1210,7 +1373,7 @@ namespace NinjaTrader.Strategy
 		
 		private void MoveStopToNextBarClose(int buffer, bool ignoreIndecisionBars, int activateOnlyAfterXBars)
 		{
-			if(ignoreIndecisionBars && IsIndecisionBar(pipMaxBodySize, bodyPctOfTotalBarSize, 0))
+			if(ignoreIndecisionBars && IsIndecisionBar(bodyPctOfTotalBarSize, 0))
 			{
 				return;
 			}
@@ -1485,7 +1648,11 @@ namespace NinjaTrader.Strategy
 					}
 				}
 				ExitLongStop(theStop);
-				lastStop = theStop;
+				if(theStop != lastStop)
+				{
+					Print(Time[0].ToString() + "  Stop for Long trade has changed from " + lastStop.ToString() + " to " + theStop.ToString());
+					lastStop = theStop;
+				}
 			}
 			if(Position.MarketPosition == MarketPosition.Short)
 			{
@@ -1501,7 +1668,11 @@ namespace NinjaTrader.Strategy
 					}
 				}
 				ExitShortStop(theStop);
-				lastStop = theStop;
+				if(theStop != lastStop)
+				{
+					Print(Time[0].ToString() + "  Stop for Short trade has changed from " + lastStop.ToString() + " to " + theStop.ToString());
+					lastStop = theStop;
+				}
 			}
 		}
 		#endregion
@@ -1647,6 +1818,54 @@ namespace NinjaTrader.Strategy
             get { return atLeastXPctTheSizeOfPreviousBar; }
             set { atLeastXPctTheSizeOfPreviousBar = Math.Max(0, value); }
         }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double LongWickMinPct
+        {
+            get { return longWickMinPct; }
+            set { longWickMinPct = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double ShortWickMaxPct
+        {
+            get { return shortWickMaxPct; }
+            set { shortWickMaxPct = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double LongWickPctAbovePreviousHigh
+        {
+            get { return longWickPctAbovePreviousHigh; }
+            set { longWickPctAbovePreviousHigh = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double OpenAndClosePctLocation
+        {
+            get { return openAndClosePctLocation; }
+            set { openAndClosePctLocation = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public bool NotPinBarIfInsideBar
+        {
+            get { return notPinBarIfInsideBar; }
+            set { notPinBarIfInsideBar = value; }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public int BarsToLookBack
+        {
+            get { return barsToLookBack; }
+            set { barsToLookBack = Math.Max(1, value); }
+        }
 		 #endregion
 		
 		 #region Location
@@ -1725,6 +1944,15 @@ namespace NinjaTrader.Strategy
         {
             get { return te_PipBuffer; }
             set { te_PipBuffer = Math.Max(0, value); }
+        }
+
+        [Description("")]
+        [GridCategory("03. Trade Entry")]
+		[Gui.Design.DisplayName("% Retracement")]
+        public double TEPctRetracement
+        {
+            get { return te_pctRetracement; }
+            set { te_pctRetracement = Math.Max(0, value); }
         }
 		 #endregion
 		
@@ -2262,6 +2490,14 @@ namespace NinjaTrader.Strategy
             get { return quantity; }
             set { quantity = Math.Max(1, value); }
         }
+
+        [Description("")]
+        [GridCategory("07. Strategy Parameters")]
+        public int MaximumStopLoss
+        {
+            get { return maximumStopLoss; }
+            set { maximumStopLoss = Math.Max(1, value); }
+        }
         #endregion
 		
 		#region Custom Property Manipulation
@@ -2287,6 +2523,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullIgnitingElephantBar:
@@ -2300,6 +2542,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullExhaustionElephantBar:
@@ -2313,6 +2561,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullBodyEngulfing:
@@ -2320,6 +2574,7 @@ namespace NinjaTrader.Strategy
 				case CTS_TradableEvent.BullBodyEngulfingOppositeColor:
 				case CTS_TradableEvent.BearBodyEngulfingOppositeColor:
 				case CTS_TradableEvent.BodyEngulfing:
+				case CTS_TradableEvent.InsideBar:
 					col.Remove(col.Find("PipBodySize", true));
 					col.Remove(col.Find("WickPercentage", true));
 					col.Remove(col.Find("NumPreviousBars", true));
@@ -2330,9 +2585,14 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
-					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullBodyEngulfingIgniting:
@@ -2346,9 +2606,14 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
-					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullElephantBar:
@@ -2365,6 +2630,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.Igniting:
@@ -2381,6 +2652,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.Exhausting:
@@ -2397,6 +2674,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.IndecisionBar:
@@ -2414,6 +2697,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.NarrowRangeBar:
@@ -2430,6 +2719,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.VelezBuySetup:
@@ -2443,6 +2738,53 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
 					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
+					break;
+					
+				case CTS_TradableEvent.PinBarTop:
+				case CTS_TradableEvent.PinBarBottom:
+					col.Remove(col.Find("PrevBarMinSize", true));
+					col.Remove(col.Find("EngulfingBarMinSize", true));
+					col.Remove(col.Find("PipBodySize", true));
+					col.Remove(col.Find("WickPercentage", true));
+					col.Remove(col.Find("NumPreviousBars", true));
+					col.Remove(col.Find("MALength", true));
+					col.Remove(col.Find("MAType", true));
+					col.Remove(col.Find("LimitDistanceFromMA", true));
+					col.Remove(col.Find("PipMaxBodySize", true));
+					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
+					col.Remove(col.Find("MinSize", true));
+					col.Remove(col.Find("MaxSize", true));
+					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("IgnoreIndecisionBars", true));
+					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
+					break;
+					
+				case CTS_TradableEvent.PinBarTopInsideBarCombo:
+				case CTS_TradableEvent.PinBarBottomInsideBarCombo:
+					col.Remove(col.Find("PrevBarMinSize", true));
+					col.Remove(col.Find("EngulfingBarMinSize", true));
+					col.Remove(col.Find("PipBodySize", true));
+					col.Remove(col.Find("WickPercentage", true));
+					col.Remove(col.Find("NumPreviousBars", true));
+					col.Remove(col.Find("MALength", true));
+					col.Remove(col.Find("MAType", true));
+					col.Remove(col.Find("LimitDistanceFromMA", true));
+					col.Remove(col.Find("PipMaxBodySize", true));
+					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
+					col.Remove(col.Find("MinSize", true));
+					col.Remove(col.Find("MaxSize", true));
+					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					break;
@@ -2464,6 +2806,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 			}
 			
@@ -2486,9 +2834,8 @@ namespace NinjaTrader.Strategy
 
 				case CTS_Location.BreakingLowerBollingerBand:
 				case CTS_Location.BreakingUpperBollingerBand:
-					col.Remove(col.Find("LocMALength", true));
-					col.Remove(col.Find("LocBBDeviation", true));
-					col.Remove(col.Find("LocBBBodyPct", true));
+					col.Remove(col.Find("LocMAType", true));
+					col.Remove(col.Find("LocPipDistance", true));
 					break;
 					
 				default:
@@ -2503,6 +2850,17 @@ namespace NinjaTrader.Strategy
 			switch(TradeEntry)
 			{
 				case CTS_TradeEntry.Immediately:
+					col.Remove(col.Find("TEPipBuffer", true));
+					col.Remove(col.Find("TEPctRetracement", true));
+					break;
+
+				case CTS_TradeEntry.EntryBarClose:
+				case CTS_TradeEntry.EntryBarHighOrLow:
+				case CTS_TradeEntry.PreviousBarHighOrLow:
+					col.Remove(col.Find("TEPctRetracement", true));
+					break;
+
+				case CTS_TradeEntry.BarRetracement:
 					col.Remove(col.Find("TEPipBuffer", true));
 					break;
 			}
@@ -3009,8 +3367,13 @@ namespace NinjaTrader.Strategy
 		Hammer,
 		Igniting,
 		IndecisionBar,
+		InsideBar,
 		NarrowRangeBar,
 		PiercingLine,
+		PinBarTop,
+		PinBarBottom,
+		PinBarTopInsideBarCombo,
+		PinBarBottomInsideBarCombo,
 		ToppingTailSetup,
 		VelezBuySetup,
 		VelezSellSetup
@@ -3037,7 +3400,8 @@ namespace NinjaTrader.Strategy
 		Immediately,
 		EntryBarClose,
 		EntryBarHighOrLow,
-		PreviousBarHighOrLow
+		PreviousBarHighOrLow,
+		BarRetracement
 	}
 	
 	public enum CTS_InitialStop

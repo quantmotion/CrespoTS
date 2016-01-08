@@ -38,6 +38,12 @@ namespace NinjaTrader.Indicator
 		private bool ignoreIndecisionBars = false;
 		private CTS_BodyOrTotalSize compareBodyOrTotalSize = CTS_BodyOrTotalSize.Body;
 		private double atLeastXPctTheSizeOfPreviousBar = 1.1;
+		private double longWickMinPct = 0.7;
+		private double shortWickMaxPct = 0.05;
+		private double longWickPctAbovePreviousHigh = 0.5;
+		private double openAndClosePctLocation = 0.3;
+		private bool notPinBarIfInsideBar = true;
+		private int barsToLookBack = 2;
         
 		// Location
         private NinjaTrader.Indicator.CTS_Location location = CTS_Location.Anywhere; // Default setting for Location
@@ -46,6 +52,8 @@ namespace NinjaTrader.Indicator
 		private int loc_PipDistance = 15;
 		private double loc_BBDeviation = 2;
 		private double loc_BBBodyPct = 0.05;
+		
+		private int tradedir = 0;
         #endregion
 
         /// <summary>
@@ -78,7 +86,7 @@ namespace NinjaTrader.Indicator
 		
 		bool IsCandlestickPattern()
 		{
-			if(TradableEvent == CTS_TradableEvent.AnyBar)
+			if(TradableEvent == NinjaTrader.Indicator.CTS_TradableEvent.AnyBar)
 			{
 				return true;
 			}
@@ -89,6 +97,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -96,6 +105,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -103,6 +113,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -110,6 +121,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -117,6 +129,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -124,6 +137,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -131,6 +145,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -138,6 +153,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -145,6 +161,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -152,6 +169,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -159,6 +177,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -166,6 +185,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -190,7 +210,7 @@ namespace NinjaTrader.Indicator
 				return true;
 			}
 			
-			pattern = IsIndecisionBar(pipMaxBodySize, bodyPctOfTotalBarSize, 0) && TradableEvent == CTS_TradableEvent.IndecisionBar;
+			pattern = IsIndecisionBar(bodyPctOfTotalBarSize, 0) && TradableEvent == CTS_TradableEvent.IndecisionBar;
 			
 			if(pattern)
 			{
@@ -201,6 +221,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -208,6 +229,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -218,10 +240,39 @@ namespace NinjaTrader.Indicator
 				return true;
 			}
 			
+			pattern = IsPinBarTop(0) && TradableEvent == CTS_TradableEvent.PinBarTop;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarBottom(0) && TradableEvent == CTS_TradableEvent.PinBarBottom;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarTopInsideBarCombo(0) && TradableEvent == CTS_TradableEvent.PinBarTopInsideBarCombo;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
+			pattern = IsPinBarBottomInsideBarCombo(0) && TradableEvent == CTS_TradableEvent.PinBarBottomInsideBarCombo;
+			
+			if(pattern)
+			{
+				return true;
+			}
+			
 			pattern = IsVelezBuySetup(maLength, maType, numPreviousBars, wickPercentage, ignoreIndecisionBars, 0) && TradableEvent == CTS_TradableEvent.VelezBuySetup;
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -229,6 +280,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -236,6 +288,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = 1;
 				return true;
 			}
 			
@@ -243,6 +296,7 @@ namespace NinjaTrader.Indicator
 			
 			if(pattern)
 			{
+				tradedir = -1;
 				return true;
 			}
 			
@@ -353,6 +407,21 @@ namespace NinjaTrader.Indicator
 			return false;	
 		}
 	
+		private bool IsInsideBar(int prevBarMinSize, int engulfingBarMinSize, double atLeastXPctTheSizeOfPreviousBar , int shift)
+		{
+			double barBody = Body(shift);
+			double prevBarBody = Body(shift+1);
+			
+			if(barBody > prevBarMinSize*TickSize && 
+				prevBarBody > engulfingBarMinSize*TickSize &&
+				prevBarBody > barBody &&
+				prevBarBody >= atLeastXPctTheSizeOfPreviousBar*barBody)
+			{
+				return true;
+			}
+			return false;	
+		}
+	
 	/*	returns true if the body of the bar is pipBodySize the size of any of the previous numPreviousBars bars. AND
 		(if it's a green bar, it has an upper wick that is not more than wickPercentage of the bar OR
 		if it's a red bar,  it has an lower wick that is not more than wickPercentage of the bar)*/
@@ -434,12 +503,12 @@ namespace NinjaTrader.Indicator
 	/*	(returns true if the bar is an indecision bar. )
 		An indecision bar is a bar with a body that is is pipMaxBodySize pips or less and the body is bodyPctOfTotalBarSize or less of the bar's size. 	
 		So if IndecisionBar(3, 0.3), it means that the maximum bodi size of this bar is 3 (or less) and the body is maximum of 30% (or less) of the total size of the bar, then this will return true*/
-		private bool IsIndecisionBar(int pipMaxBodySize, double bodyPctOfTotalBarSize, int shift)
+		private bool IsIndecisionBar(double bodyPctOfTotalBarSize, int shift)
 		{
 			double barBody = Body(shift);
 			double barRange = Range(shift);
 			
-			if(barBody < pipMaxBodySize*TickSize && barBody <= barRange*bodyPctOfTotalBarSize)
+			if(barBody <= barRange*bodyPctOfTotalBarSize)
 			{
 				return true;
 			}
@@ -531,7 +600,10 @@ namespace NinjaTrader.Indicator
 		isgreen is true */
 		private bool IsBullBodyEngulfing(int shift)
 		{
-			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] > Close[shift+1] && IsGreen(shift))
+			double barSize = Range(shift);
+			double topWickPct = TopWick(shift)/barSize;
+			
+			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] > Close[shift+1] && IsGreen(shift) && topWickPct <= MaxWickPct)
 			{
 				return true;
 			}
@@ -544,7 +616,10 @@ namespace NinjaTrader.Indicator
 
 		private bool IsBearBodyEngulfing(int shift)
 		{
-			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] < Close[shift+1] && IsRed(shift))
+			double barSize = Range(shift);
+			double bottomWickPct = BottomWick(shift)/barSize;
+			
+			if(IsBodyEngulfing(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift) && Close[shift] < Close[shift+1] && IsRed(shift) && bottomWickPct <= MaxWickPct)
 			{
 				return true;
 			}
@@ -592,11 +667,103 @@ namespace NinjaTrader.Indicator
 		
 		private bool IsPinBarTop(int shift)
 		{
+			if(notPinBarIfInsideBar && IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift))
+				return false;
+			
+			double barSize = Range(shift);
+			double topWickPct = TopWick(shift)/barSize;
+			double bottomWickPct = BottomWick(shift)/barSize;
+			
+			if(topWickPct >= longWickMinPct && bottomWickPct <= shortWickMaxPct && High[shift] > High[shift+1] && High[shift] - High[shift+1] > TopWick(shift)*longWickPctAbovePreviousHigh && Math.Max(Open[shift], Close[shift]) <= Low[shift] + barSize*openAndClosePctLocation)
+			{
+				return true;
+			}
+			
 			return false;
 		}
 		
 		private bool IsPinBarBottom(int shift)
 		{
+			if(notPinBarIfInsideBar && IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, shift))
+				return false;
+			
+			double barSize = Range(shift);
+			double topWickPct = TopWick(shift)/barSize;
+			double bottomWickPct = BottomWick(shift)/barSize;
+			
+			if(bottomWickPct >= longWickMinPct && topWickPct <= shortWickMaxPct && Low[shift] < Low[shift+1] && Low[shift+1] - Low[shift] > BottomWick(shift)*longWickPctAbovePreviousHigh && Math.Min(Open[shift], Close[shift]) >= High[shift] - barSize*openAndClosePctLocation)
+			{
+				return true;
+			}
+			
+			return false;
+		}
+		
+		private bool IsPinBarTopInsideBarCombo(int shift)
+		{
+			int pinbar = -1;
+			
+			for(int i = 1; i < barsToLookBack; i++)
+			{
+				if(IsPinBarTop(i))
+				{
+					pinbar = i;
+					break;
+				}
+			}
+			
+			if(pinbar > 0)
+			{
+				bool inside = true;
+				for(int i = 0; i < pinbar; i++)
+				{
+					if(!IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, i))
+					{
+						inside = false;
+						break;
+					}
+				}
+				
+				if(inside)
+				{
+					return true;
+				}
+			}
+			
+			return false;
+		}
+		
+		private bool IsPinBarBottomInsideBarCombo(int shift)
+		{
+			int pinbar = -1;
+			
+			for(int i = 1; i < barsToLookBack; i++)
+			{
+				if(IsPinBarBottom(i))
+				{
+					pinbar = i;
+					break;
+				}
+			}
+			
+			if(pinbar > 0)
+			{
+				bool inside = true;
+				for(int i = 0; i < pinbar; i++)
+				{
+					if(!IsInsideBar(prevBarMinSize, engulfingBarMinSize, atLeastXPctTheSizeOfPreviousBar, i))
+					{
+						inside = false;
+						break;
+					}
+				}
+				
+				if(inside)
+				{
+					return true;
+				}
+			}
+			
 			return false;
 		}
 		
@@ -625,7 +792,7 @@ namespace NinjaTrader.Indicator
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -670,7 +837,7 @@ namespace NinjaTrader.Indicator
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -715,7 +882,7 @@ namespace NinjaTrader.Indicator
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -759,7 +926,7 @@ namespace NinjaTrader.Indicator
 			
 			for(int i = 0; i < CurrentBar - 1; i++)
 			{
-				if(IgnoreIndecisionBars && IsIndecisionBar(PipMaxBodySize, BodyPctOfTotalBarSize, shift))
+				if(IgnoreIndecisionBars && IsIndecisionBar(BodyPctOfTotalBarSize, shift))
 				{
 					continue;
 				}
@@ -1033,6 +1200,54 @@ namespace NinjaTrader.Indicator
             get { return atLeastXPctTheSizeOfPreviousBar; }
             set { atLeastXPctTheSizeOfPreviousBar = Math.Max(0, value); }
         }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double LongWickMinPct
+        {
+            get { return longWickMinPct; }
+            set { longWickMinPct = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double ShortWickMaxPct
+        {
+            get { return shortWickMaxPct; }
+            set { shortWickMaxPct = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double LongWickPctAbovePreviousHigh
+        {
+            get { return longWickPctAbovePreviousHigh; }
+            set { longWickPctAbovePreviousHigh = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public double OpenAndClosePctLocation
+        {
+            get { return openAndClosePctLocation; }
+            set { openAndClosePctLocation = Math.Max(0, Math.Min(1, value)); }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public bool NotPinBarIfInsideBar
+        {
+            get { return notPinBarIfInsideBar; }
+            set { notPinBarIfInsideBar = value; }
+        }
+
+        [Description("")]
+        [GridCategory("01. Tradable Event")]
+        public int BarsToLookBack
+        {
+            get { return barsToLookBack; }
+            set { barsToLookBack = Math.Max(1, value); }
+        }
 		 #endregion
 		
 		 #region Location
@@ -1117,6 +1332,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullIgnitingElephantBar:
@@ -1130,6 +1351,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullExhaustionElephantBar:
@@ -1143,6 +1370,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullBodyEngulfing:
@@ -1150,6 +1383,7 @@ namespace NinjaTrader.Indicator
 				case CTS_TradableEvent.BullBodyEngulfingOppositeColor:
 				case CTS_TradableEvent.BearBodyEngulfingOppositeColor:
 				case CTS_TradableEvent.BodyEngulfing:
+				case CTS_TradableEvent.InsideBar:
 					col.Remove(col.Find("PipBodySize", true));
 					col.Remove(col.Find("WickPercentage", true));
 					col.Remove(col.Find("NumPreviousBars", true));
@@ -1160,9 +1394,14 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
-					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullBodyEngulfingIgniting:
@@ -1176,9 +1415,14 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
-					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.BullElephantBar:
@@ -1195,6 +1439,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("MaxWickPct", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.Igniting:
@@ -1211,6 +1461,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.Exhausting:
@@ -1227,6 +1483,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.IndecisionBar:
@@ -1244,6 +1506,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.NarrowRangeBar:
@@ -1260,6 +1528,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 					
 				case CTS_TradableEvent.VelezBuySetup:
@@ -1273,6 +1547,53 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
 					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
+					break;
+					
+				case CTS_TradableEvent.PinBarTop:
+				case CTS_TradableEvent.PinBarBottom:
+					col.Remove(col.Find("PrevBarMinSize", true));
+					col.Remove(col.Find("EngulfingBarMinSize", true));
+					col.Remove(col.Find("PipBodySize", true));
+					col.Remove(col.Find("WickPercentage", true));
+					col.Remove(col.Find("NumPreviousBars", true));
+					col.Remove(col.Find("MALength", true));
+					col.Remove(col.Find("MAType", true));
+					col.Remove(col.Find("LimitDistanceFromMA", true));
+					col.Remove(col.Find("PipMaxBodySize", true));
+					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
+					col.Remove(col.Find("MinSize", true));
+					col.Remove(col.Find("MaxSize", true));
+					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("IgnoreIndecisionBars", true));
+					col.Remove(col.Find("CompareBodyOrTotalSize", true));
+					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
+					break;
+					
+				case CTS_TradableEvent.PinBarTopInsideBarCombo:
+				case CTS_TradableEvent.PinBarBottomInsideBarCombo:
+					col.Remove(col.Find("PrevBarMinSize", true));
+					col.Remove(col.Find("EngulfingBarMinSize", true));
+					col.Remove(col.Find("PipBodySize", true));
+					col.Remove(col.Find("WickPercentage", true));
+					col.Remove(col.Find("NumPreviousBars", true));
+					col.Remove(col.Find("MALength", true));
+					col.Remove(col.Find("MAType", true));
+					col.Remove(col.Find("LimitDistanceFromMA", true));
+					col.Remove(col.Find("PipMaxBodySize", true));
+					col.Remove(col.Find("BodyPctOfTotalBarSize", true));
+					col.Remove(col.Find("MinSize", true));
+					col.Remove(col.Find("MaxSize", true));
+					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					break;
@@ -1294,6 +1615,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
+					col.Remove(col.Find("LongWickMinPct", true));
+					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
+					col.Remove(col.Find("OpenAndClosePctLocation", true));
+					col.Remove(col.Find("NotPinBarIfInsideBar", true));
+					col.Remove(col.Find("BarsTolookBack", true));
 					break;
 			}
 			
@@ -1316,9 +1643,8 @@ namespace NinjaTrader.Indicator
 
 				case CTS_Location.BreakingLowerBollingerBand:
 				case CTS_Location.BreakingUpperBollingerBand:
-					col.Remove(col.Find("LocMALength", true));
-					col.Remove(col.Find("LocBBDeviation", true));
-					col.Remove(col.Find("LocBBBodyPct", true));
+					col.Remove(col.Find("LocMAType", true));
+					col.Remove(col.Find("LocPipDistance", true));
 					break;
 					
 				default:
@@ -1431,8 +1757,13 @@ namespace NinjaTrader.Indicator
 		Hammer,
 		Igniting,
 		IndecisionBar,
+		InsideBar,
 		NarrowRangeBar,
 		PiercingLine,
+		PinBarTop,
+		PinBarBottom,
+		PinBarTopInsideBarCombo,
+		PinBarBottomInsideBarCombo,
 		ToppingTailSetup,
 		VelezBuySetup,
 		VelezSellSetup
@@ -1477,26 +1808,28 @@ namespace NinjaTrader.Indicator
         /// Enter the description of your new custom indicator here
         /// </summary>
         /// <returns></returns>
-        public CrespoCandleLocation CrespoCandleLocation(double atLeastXPctTheSizeOfPreviousBar, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, int numPreviousBars, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
+        public CrespoCandleLocation CrespoCandleLocation(double atLeastXPctTheSizeOfPreviousBar, int barsToLookBack, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, double longWickMinPct, double longWickPctAbovePreviousHigh, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, bool notPinBarIfInsideBar, int numPreviousBars, double openAndClosePctLocation, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, double shortWickMaxPct, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
         {
-            return CrespoCandleLocation(Input, atLeastXPctTheSizeOfPreviousBar, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, mALength, mAType, maxSize, maxWickPct, minSize, numPreviousBars, pipBodySize, pipMaxBodySize, prevBarMinSize, tradableEvent, wickPercentage);
+            return CrespoCandleLocation(Input, atLeastXPctTheSizeOfPreviousBar, barsToLookBack, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, longWickMinPct, longWickPctAbovePreviousHigh, mALength, mAType, maxSize, maxWickPct, minSize, notPinBarIfInsideBar, numPreviousBars, openAndClosePctLocation, pipBodySize, pipMaxBodySize, prevBarMinSize, shortWickMaxPct, tradableEvent, wickPercentage);
         }
 
         /// <summary>
         /// Enter the description of your new custom indicator here
         /// </summary>
         /// <returns></returns>
-        public CrespoCandleLocation CrespoCandleLocation(Data.IDataSeries input, double atLeastXPctTheSizeOfPreviousBar, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, int numPreviousBars, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
+        public CrespoCandleLocation CrespoCandleLocation(Data.IDataSeries input, double atLeastXPctTheSizeOfPreviousBar, int barsToLookBack, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, double longWickMinPct, double longWickPctAbovePreviousHigh, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, bool notPinBarIfInsideBar, int numPreviousBars, double openAndClosePctLocation, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, double shortWickMaxPct, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
         {
             if (cacheCrespoCandleLocation != null)
                 for (int idx = 0; idx < cacheCrespoCandleLocation.Length; idx++)
-                    if (Math.Abs(cacheCrespoCandleLocation[idx].AtLeastXPctTheSizeOfPreviousBar - atLeastXPctTheSizeOfPreviousBar) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].BodyPctOfTotalBarSize - bodyPctOfTotalBarSize) <= double.Epsilon && cacheCrespoCandleLocation[idx].CompareBodyOrTotalSize == compareBodyOrTotalSize && cacheCrespoCandleLocation[idx].EngulfingBarMinSize == engulfingBarMinSize && cacheCrespoCandleLocation[idx].IgnoreIndecisionBars == ignoreIndecisionBars && cacheCrespoCandleLocation[idx].LimitDistanceFromMA == limitDistanceFromMA && cacheCrespoCandleLocation[idx].Location == location && Math.Abs(cacheCrespoCandleLocation[idx].LocBBBodyPct - locBBBodyPct) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].LocBBDeviation - locBBDeviation) <= double.Epsilon && cacheCrespoCandleLocation[idx].LocMALength == locMALength && cacheCrespoCandleLocation[idx].LocMAType == locMAType && cacheCrespoCandleLocation[idx].LocPipDistance == locPipDistance && cacheCrespoCandleLocation[idx].MALength == mALength && cacheCrespoCandleLocation[idx].MAType == mAType && cacheCrespoCandleLocation[idx].MaxSize == maxSize && Math.Abs(cacheCrespoCandleLocation[idx].MaxWickPct - maxWickPct) <= double.Epsilon && cacheCrespoCandleLocation[idx].MinSize == minSize && cacheCrespoCandleLocation[idx].NumPreviousBars == numPreviousBars && Math.Abs(cacheCrespoCandleLocation[idx].PipBodySize - pipBodySize) <= double.Epsilon && cacheCrespoCandleLocation[idx].PipMaxBodySize == pipMaxBodySize && cacheCrespoCandleLocation[idx].PrevBarMinSize == prevBarMinSize && cacheCrespoCandleLocation[idx].TradableEvent == tradableEvent && Math.Abs(cacheCrespoCandleLocation[idx].WickPercentage - wickPercentage) <= double.Epsilon && cacheCrespoCandleLocation[idx].EqualsInput(input))
+                    if (Math.Abs(cacheCrespoCandleLocation[idx].AtLeastXPctTheSizeOfPreviousBar - atLeastXPctTheSizeOfPreviousBar) <= double.Epsilon && cacheCrespoCandleLocation[idx].BarsToLookBack == barsToLookBack && Math.Abs(cacheCrespoCandleLocation[idx].BodyPctOfTotalBarSize - bodyPctOfTotalBarSize) <= double.Epsilon && cacheCrespoCandleLocation[idx].CompareBodyOrTotalSize == compareBodyOrTotalSize && cacheCrespoCandleLocation[idx].EngulfingBarMinSize == engulfingBarMinSize && cacheCrespoCandleLocation[idx].IgnoreIndecisionBars == ignoreIndecisionBars && cacheCrespoCandleLocation[idx].LimitDistanceFromMA == limitDistanceFromMA && cacheCrespoCandleLocation[idx].Location == location && Math.Abs(cacheCrespoCandleLocation[idx].LocBBBodyPct - locBBBodyPct) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].LocBBDeviation - locBBDeviation) <= double.Epsilon && cacheCrespoCandleLocation[idx].LocMALength == locMALength && cacheCrespoCandleLocation[idx].LocMAType == locMAType && cacheCrespoCandleLocation[idx].LocPipDistance == locPipDistance && Math.Abs(cacheCrespoCandleLocation[idx].LongWickMinPct - longWickMinPct) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].LongWickPctAbovePreviousHigh - longWickPctAbovePreviousHigh) <= double.Epsilon && cacheCrespoCandleLocation[idx].MALength == mALength && cacheCrespoCandleLocation[idx].MAType == mAType && cacheCrespoCandleLocation[idx].MaxSize == maxSize && Math.Abs(cacheCrespoCandleLocation[idx].MaxWickPct - maxWickPct) <= double.Epsilon && cacheCrespoCandleLocation[idx].MinSize == minSize && cacheCrespoCandleLocation[idx].NotPinBarIfInsideBar == notPinBarIfInsideBar && cacheCrespoCandleLocation[idx].NumPreviousBars == numPreviousBars && Math.Abs(cacheCrespoCandleLocation[idx].OpenAndClosePctLocation - openAndClosePctLocation) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].PipBodySize - pipBodySize) <= double.Epsilon && cacheCrespoCandleLocation[idx].PipMaxBodySize == pipMaxBodySize && cacheCrespoCandleLocation[idx].PrevBarMinSize == prevBarMinSize && Math.Abs(cacheCrespoCandleLocation[idx].ShortWickMaxPct - shortWickMaxPct) <= double.Epsilon && cacheCrespoCandleLocation[idx].TradableEvent == tradableEvent && Math.Abs(cacheCrespoCandleLocation[idx].WickPercentage - wickPercentage) <= double.Epsilon && cacheCrespoCandleLocation[idx].EqualsInput(input))
                         return cacheCrespoCandleLocation[idx];
 
             lock (checkCrespoCandleLocation)
             {
                 checkCrespoCandleLocation.AtLeastXPctTheSizeOfPreviousBar = atLeastXPctTheSizeOfPreviousBar;
                 atLeastXPctTheSizeOfPreviousBar = checkCrespoCandleLocation.AtLeastXPctTheSizeOfPreviousBar;
+                checkCrespoCandleLocation.BarsToLookBack = barsToLookBack;
+                barsToLookBack = checkCrespoCandleLocation.BarsToLookBack;
                 checkCrespoCandleLocation.BodyPctOfTotalBarSize = bodyPctOfTotalBarSize;
                 bodyPctOfTotalBarSize = checkCrespoCandleLocation.BodyPctOfTotalBarSize;
                 checkCrespoCandleLocation.CompareBodyOrTotalSize = compareBodyOrTotalSize;
@@ -1519,6 +1852,10 @@ namespace NinjaTrader.Indicator
                 locMAType = checkCrespoCandleLocation.LocMAType;
                 checkCrespoCandleLocation.LocPipDistance = locPipDistance;
                 locPipDistance = checkCrespoCandleLocation.LocPipDistance;
+                checkCrespoCandleLocation.LongWickMinPct = longWickMinPct;
+                longWickMinPct = checkCrespoCandleLocation.LongWickMinPct;
+                checkCrespoCandleLocation.LongWickPctAbovePreviousHigh = longWickPctAbovePreviousHigh;
+                longWickPctAbovePreviousHigh = checkCrespoCandleLocation.LongWickPctAbovePreviousHigh;
                 checkCrespoCandleLocation.MALength = mALength;
                 mALength = checkCrespoCandleLocation.MALength;
                 checkCrespoCandleLocation.MAType = mAType;
@@ -1529,14 +1866,20 @@ namespace NinjaTrader.Indicator
                 maxWickPct = checkCrespoCandleLocation.MaxWickPct;
                 checkCrespoCandleLocation.MinSize = minSize;
                 minSize = checkCrespoCandleLocation.MinSize;
+                checkCrespoCandleLocation.NotPinBarIfInsideBar = notPinBarIfInsideBar;
+                notPinBarIfInsideBar = checkCrespoCandleLocation.NotPinBarIfInsideBar;
                 checkCrespoCandleLocation.NumPreviousBars = numPreviousBars;
                 numPreviousBars = checkCrespoCandleLocation.NumPreviousBars;
+                checkCrespoCandleLocation.OpenAndClosePctLocation = openAndClosePctLocation;
+                openAndClosePctLocation = checkCrespoCandleLocation.OpenAndClosePctLocation;
                 checkCrespoCandleLocation.PipBodySize = pipBodySize;
                 pipBodySize = checkCrespoCandleLocation.PipBodySize;
                 checkCrespoCandleLocation.PipMaxBodySize = pipMaxBodySize;
                 pipMaxBodySize = checkCrespoCandleLocation.PipMaxBodySize;
                 checkCrespoCandleLocation.PrevBarMinSize = prevBarMinSize;
                 prevBarMinSize = checkCrespoCandleLocation.PrevBarMinSize;
+                checkCrespoCandleLocation.ShortWickMaxPct = shortWickMaxPct;
+                shortWickMaxPct = checkCrespoCandleLocation.ShortWickMaxPct;
                 checkCrespoCandleLocation.TradableEvent = tradableEvent;
                 tradableEvent = checkCrespoCandleLocation.TradableEvent;
                 checkCrespoCandleLocation.WickPercentage = wickPercentage;
@@ -1544,7 +1887,7 @@ namespace NinjaTrader.Indicator
 
                 if (cacheCrespoCandleLocation != null)
                     for (int idx = 0; idx < cacheCrespoCandleLocation.Length; idx++)
-                        if (Math.Abs(cacheCrespoCandleLocation[idx].AtLeastXPctTheSizeOfPreviousBar - atLeastXPctTheSizeOfPreviousBar) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].BodyPctOfTotalBarSize - bodyPctOfTotalBarSize) <= double.Epsilon && cacheCrespoCandleLocation[idx].CompareBodyOrTotalSize == compareBodyOrTotalSize && cacheCrespoCandleLocation[idx].EngulfingBarMinSize == engulfingBarMinSize && cacheCrespoCandleLocation[idx].IgnoreIndecisionBars == ignoreIndecisionBars && cacheCrespoCandleLocation[idx].LimitDistanceFromMA == limitDistanceFromMA && cacheCrespoCandleLocation[idx].Location == location && Math.Abs(cacheCrespoCandleLocation[idx].LocBBBodyPct - locBBBodyPct) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].LocBBDeviation - locBBDeviation) <= double.Epsilon && cacheCrespoCandleLocation[idx].LocMALength == locMALength && cacheCrespoCandleLocation[idx].LocMAType == locMAType && cacheCrespoCandleLocation[idx].LocPipDistance == locPipDistance && cacheCrespoCandleLocation[idx].MALength == mALength && cacheCrespoCandleLocation[idx].MAType == mAType && cacheCrespoCandleLocation[idx].MaxSize == maxSize && Math.Abs(cacheCrespoCandleLocation[idx].MaxWickPct - maxWickPct) <= double.Epsilon && cacheCrespoCandleLocation[idx].MinSize == minSize && cacheCrespoCandleLocation[idx].NumPreviousBars == numPreviousBars && Math.Abs(cacheCrespoCandleLocation[idx].PipBodySize - pipBodySize) <= double.Epsilon && cacheCrespoCandleLocation[idx].PipMaxBodySize == pipMaxBodySize && cacheCrespoCandleLocation[idx].PrevBarMinSize == prevBarMinSize && cacheCrespoCandleLocation[idx].TradableEvent == tradableEvent && Math.Abs(cacheCrespoCandleLocation[idx].WickPercentage - wickPercentage) <= double.Epsilon && cacheCrespoCandleLocation[idx].EqualsInput(input))
+                        if (Math.Abs(cacheCrespoCandleLocation[idx].AtLeastXPctTheSizeOfPreviousBar - atLeastXPctTheSizeOfPreviousBar) <= double.Epsilon && cacheCrespoCandleLocation[idx].BarsToLookBack == barsToLookBack && Math.Abs(cacheCrespoCandleLocation[idx].BodyPctOfTotalBarSize - bodyPctOfTotalBarSize) <= double.Epsilon && cacheCrespoCandleLocation[idx].CompareBodyOrTotalSize == compareBodyOrTotalSize && cacheCrespoCandleLocation[idx].EngulfingBarMinSize == engulfingBarMinSize && cacheCrespoCandleLocation[idx].IgnoreIndecisionBars == ignoreIndecisionBars && cacheCrespoCandleLocation[idx].LimitDistanceFromMA == limitDistanceFromMA && cacheCrespoCandleLocation[idx].Location == location && Math.Abs(cacheCrespoCandleLocation[idx].LocBBBodyPct - locBBBodyPct) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].LocBBDeviation - locBBDeviation) <= double.Epsilon && cacheCrespoCandleLocation[idx].LocMALength == locMALength && cacheCrespoCandleLocation[idx].LocMAType == locMAType && cacheCrespoCandleLocation[idx].LocPipDistance == locPipDistance && Math.Abs(cacheCrespoCandleLocation[idx].LongWickMinPct - longWickMinPct) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].LongWickPctAbovePreviousHigh - longWickPctAbovePreviousHigh) <= double.Epsilon && cacheCrespoCandleLocation[idx].MALength == mALength && cacheCrespoCandleLocation[idx].MAType == mAType && cacheCrespoCandleLocation[idx].MaxSize == maxSize && Math.Abs(cacheCrespoCandleLocation[idx].MaxWickPct - maxWickPct) <= double.Epsilon && cacheCrespoCandleLocation[idx].MinSize == minSize && cacheCrespoCandleLocation[idx].NotPinBarIfInsideBar == notPinBarIfInsideBar && cacheCrespoCandleLocation[idx].NumPreviousBars == numPreviousBars && Math.Abs(cacheCrespoCandleLocation[idx].OpenAndClosePctLocation - openAndClosePctLocation) <= double.Epsilon && Math.Abs(cacheCrespoCandleLocation[idx].PipBodySize - pipBodySize) <= double.Epsilon && cacheCrespoCandleLocation[idx].PipMaxBodySize == pipMaxBodySize && cacheCrespoCandleLocation[idx].PrevBarMinSize == prevBarMinSize && Math.Abs(cacheCrespoCandleLocation[idx].ShortWickMaxPct - shortWickMaxPct) <= double.Epsilon && cacheCrespoCandleLocation[idx].TradableEvent == tradableEvent && Math.Abs(cacheCrespoCandleLocation[idx].WickPercentage - wickPercentage) <= double.Epsilon && cacheCrespoCandleLocation[idx].EqualsInput(input))
                             return cacheCrespoCandleLocation[idx];
 
                 CrespoCandleLocation indicator = new CrespoCandleLocation();
@@ -1556,6 +1899,7 @@ namespace NinjaTrader.Indicator
 #endif
                 indicator.Input = input;
                 indicator.AtLeastXPctTheSizeOfPreviousBar = atLeastXPctTheSizeOfPreviousBar;
+                indicator.BarsToLookBack = barsToLookBack;
                 indicator.BodyPctOfTotalBarSize = bodyPctOfTotalBarSize;
                 indicator.CompareBodyOrTotalSize = compareBodyOrTotalSize;
                 indicator.EngulfingBarMinSize = engulfingBarMinSize;
@@ -1567,15 +1911,20 @@ namespace NinjaTrader.Indicator
                 indicator.LocMALength = locMALength;
                 indicator.LocMAType = locMAType;
                 indicator.LocPipDistance = locPipDistance;
+                indicator.LongWickMinPct = longWickMinPct;
+                indicator.LongWickPctAbovePreviousHigh = longWickPctAbovePreviousHigh;
                 indicator.MALength = mALength;
                 indicator.MAType = mAType;
                 indicator.MaxSize = maxSize;
                 indicator.MaxWickPct = maxWickPct;
                 indicator.MinSize = minSize;
+                indicator.NotPinBarIfInsideBar = notPinBarIfInsideBar;
                 indicator.NumPreviousBars = numPreviousBars;
+                indicator.OpenAndClosePctLocation = openAndClosePctLocation;
                 indicator.PipBodySize = pipBodySize;
                 indicator.PipMaxBodySize = pipMaxBodySize;
                 indicator.PrevBarMinSize = prevBarMinSize;
+                indicator.ShortWickMaxPct = shortWickMaxPct;
                 indicator.TradableEvent = tradableEvent;
                 indicator.WickPercentage = wickPercentage;
                 Indicators.Add(indicator);
@@ -1602,18 +1951,18 @@ namespace NinjaTrader.MarketAnalyzer
         /// </summary>
         /// <returns></returns>
         [Gui.Design.WizardCondition("Indicator")]
-        public Indicator.CrespoCandleLocation CrespoCandleLocation(double atLeastXPctTheSizeOfPreviousBar, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, int numPreviousBars, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
+        public Indicator.CrespoCandleLocation CrespoCandleLocation(double atLeastXPctTheSizeOfPreviousBar, int barsToLookBack, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, double longWickMinPct, double longWickPctAbovePreviousHigh, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, bool notPinBarIfInsideBar, int numPreviousBars, double openAndClosePctLocation, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, double shortWickMaxPct, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
         {
-            return _indicator.CrespoCandleLocation(Input, atLeastXPctTheSizeOfPreviousBar, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, mALength, mAType, maxSize, maxWickPct, minSize, numPreviousBars, pipBodySize, pipMaxBodySize, prevBarMinSize, tradableEvent, wickPercentage);
+            return _indicator.CrespoCandleLocation(Input, atLeastXPctTheSizeOfPreviousBar, barsToLookBack, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, longWickMinPct, longWickPctAbovePreviousHigh, mALength, mAType, maxSize, maxWickPct, minSize, notPinBarIfInsideBar, numPreviousBars, openAndClosePctLocation, pipBodySize, pipMaxBodySize, prevBarMinSize, shortWickMaxPct, tradableEvent, wickPercentage);
         }
 
         /// <summary>
         /// Enter the description of your new custom indicator here
         /// </summary>
         /// <returns></returns>
-        public Indicator.CrespoCandleLocation CrespoCandleLocation(Data.IDataSeries input, double atLeastXPctTheSizeOfPreviousBar, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, int numPreviousBars, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
+        public Indicator.CrespoCandleLocation CrespoCandleLocation(Data.IDataSeries input, double atLeastXPctTheSizeOfPreviousBar, int barsToLookBack, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, double longWickMinPct, double longWickPctAbovePreviousHigh, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, bool notPinBarIfInsideBar, int numPreviousBars, double openAndClosePctLocation, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, double shortWickMaxPct, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
         {
-            return _indicator.CrespoCandleLocation(input, atLeastXPctTheSizeOfPreviousBar, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, mALength, mAType, maxSize, maxWickPct, minSize, numPreviousBars, pipBodySize, pipMaxBodySize, prevBarMinSize, tradableEvent, wickPercentage);
+            return _indicator.CrespoCandleLocation(input, atLeastXPctTheSizeOfPreviousBar, barsToLookBack, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, longWickMinPct, longWickPctAbovePreviousHigh, mALength, mAType, maxSize, maxWickPct, minSize, notPinBarIfInsideBar, numPreviousBars, openAndClosePctLocation, pipBodySize, pipMaxBodySize, prevBarMinSize, shortWickMaxPct, tradableEvent, wickPercentage);
         }
     }
 }
@@ -1628,21 +1977,21 @@ namespace NinjaTrader.Strategy
         /// </summary>
         /// <returns></returns>
         [Gui.Design.WizardCondition("Indicator")]
-        public Indicator.CrespoCandleLocation CrespoCandleLocation(double atLeastXPctTheSizeOfPreviousBar, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, int numPreviousBars, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
+        public Indicator.CrespoCandleLocation CrespoCandleLocation(double atLeastXPctTheSizeOfPreviousBar, int barsToLookBack, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, double longWickMinPct, double longWickPctAbovePreviousHigh, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, bool notPinBarIfInsideBar, int numPreviousBars, double openAndClosePctLocation, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, double shortWickMaxPct, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
         {
-            return _indicator.CrespoCandleLocation(Input, atLeastXPctTheSizeOfPreviousBar, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, mALength, mAType, maxSize, maxWickPct, minSize, numPreviousBars, pipBodySize, pipMaxBodySize, prevBarMinSize, tradableEvent, wickPercentage);
+            return _indicator.CrespoCandleLocation(Input, atLeastXPctTheSizeOfPreviousBar, barsToLookBack, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, longWickMinPct, longWickPctAbovePreviousHigh, mALength, mAType, maxSize, maxWickPct, minSize, notPinBarIfInsideBar, numPreviousBars, openAndClosePctLocation, pipBodySize, pipMaxBodySize, prevBarMinSize, shortWickMaxPct, tradableEvent, wickPercentage);
         }
 
         /// <summary>
         /// Enter the description of your new custom indicator here
         /// </summary>
         /// <returns></returns>
-        public Indicator.CrespoCandleLocation CrespoCandleLocation(Data.IDataSeries input, double atLeastXPctTheSizeOfPreviousBar, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, int numPreviousBars, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
+        public Indicator.CrespoCandleLocation CrespoCandleLocation(Data.IDataSeries input, double atLeastXPctTheSizeOfPreviousBar, int barsToLookBack, double bodyPctOfTotalBarSize, NinjaTrader.Indicator.CTS_BodyOrTotalSize compareBodyOrTotalSize, int engulfingBarMinSize, bool ignoreIndecisionBars, int limitDistanceFromMA, NinjaTrader.Indicator.CTS_Location location, double locBBBodyPct, double locBBDeviation, int locMALength, NinjaTrader.Indicator.CTS_MAType locMAType, int locPipDistance, double longWickMinPct, double longWickPctAbovePreviousHigh, int mALength, NinjaTrader.Indicator.CTS_MAType mAType, int maxSize, double maxWickPct, int minSize, bool notPinBarIfInsideBar, int numPreviousBars, double openAndClosePctLocation, double pipBodySize, int pipMaxBodySize, int prevBarMinSize, double shortWickMaxPct, NinjaTrader.Indicator.CTS_TradableEvent tradableEvent, double wickPercentage)
         {
             if (InInitialize && input == null)
                 throw new ArgumentException("You only can access an indicator with the default input/bar series from within the 'Initialize()' method");
 
-            return _indicator.CrespoCandleLocation(input, atLeastXPctTheSizeOfPreviousBar, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, mALength, mAType, maxSize, maxWickPct, minSize, numPreviousBars, pipBodySize, pipMaxBodySize, prevBarMinSize, tradableEvent, wickPercentage);
+            return _indicator.CrespoCandleLocation(input, atLeastXPctTheSizeOfPreviousBar, barsToLookBack, bodyPctOfTotalBarSize, compareBodyOrTotalSize, engulfingBarMinSize, ignoreIndecisionBars, limitDistanceFromMA, location, locBBBodyPct, locBBDeviation, locMALength, locMAType, locPipDistance, longWickMinPct, longWickPctAbovePreviousHigh, mALength, mAType, maxSize, maxWickPct, minSize, notPinBarIfInsideBar, numPreviousBars, openAndClosePctLocation, pipBodySize, pipMaxBodySize, prevBarMinSize, shortWickMaxPct, tradableEvent, wickPercentage);
         }
     }
 }
