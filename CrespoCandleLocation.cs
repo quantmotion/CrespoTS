@@ -1078,7 +1078,7 @@ namespace NinjaTrader.Indicator
         public int PrevBarMinSize
         {
             get { return prevBarMinSize; }
-            set { prevBarMinSize = Math.Max(1, value); }
+            set { prevBarMinSize = Math.Max(0, value); }
         }
 
         [Description("")]
@@ -1086,11 +1086,12 @@ namespace NinjaTrader.Indicator
         public int EngulfingBarMinSize
         {
             get { return engulfingBarMinSize; }
-            set { engulfingBarMinSize = Math.Max(1, value); }
+            set { engulfingBarMinSize = Math.Max(0, value); }
         }
 
         [Description("")]
         [GridCategory("01. Tradable Event")]
+		[Gui.Design.DisplayName("XTimesTheSize")]
         public double PipBodySize
         {
             get { return pipBodySize; }
@@ -1333,7 +1334,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1352,7 +1353,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1371,7 +1372,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1397,7 +1398,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1418,7 +1419,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1440,7 +1441,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1462,7 +1463,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1484,7 +1485,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1503,11 +1504,12 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
 					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("PipMaxBodySize", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1529,7 +1531,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1550,7 +1552,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -1616,7 +1618,7 @@ namespace NinjaTrader.Indicator
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));

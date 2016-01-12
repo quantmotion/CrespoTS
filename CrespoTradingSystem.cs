@@ -53,8 +53,8 @@ namespace NinjaTrader.Strategy
         
 		// Location
         private NinjaTrader.Strategy.CTS_Location location = CTS_Location.Anywhere; // Default setting for Location
-		private int loc_MALength = 30;
-		private NinjaTrader.Strategy.CTS_MAType loc_MAType = CTS_MAType.Exponential;
+		private int loc_MALength = 20;
+		private NinjaTrader.Strategy.CTS_MAType loc_MAType = CTS_MAType.Simple;
 		private int loc_PipDistance = 15;
 		private double loc_BBDeviation = 2;
 		private double loc_BBBodyPct = 0.05;
@@ -69,22 +69,22 @@ namespace NinjaTrader.Strategy
         private CTS_InitialStop initialStop1 = CTS_InitialStop.EntryBarHighOrLow; // Default setting for InitialStop1
 		private int is1_PipBuffer = 3;
 		private int is1_NumberOfBars = 10;
-		private int is1_MALength = 30;
-		private CTS_MAType is1_MAType = CTS_MAType.Exponential;
+		private int is1_MALength = 20;
+		private CTS_MAType is1_MAType = CTS_MAType.Simple;
 		private int is1_PipDistance = 15;
 		// Initial Stop 2
         private CTS_InitialStop initialStop2 = CTS_InitialStop.NotUsed; // Default setting for InitialStop1
 		private int is2_PipBuffer = 3;
 		private int is2_NumberOfBars = 10;
-		private int is2_MALength = 30;
-		private CTS_MAType is2_MAType = CTS_MAType.Exponential;
+		private int is2_MALength = 20;
+		private CTS_MAType is2_MAType = CTS_MAType.Simple;
 		private int is2_PipDistance = 15;
 		// Initial Stop 3
         private CTS_InitialStop initialStop3 = CTS_InitialStop.NotUsed; // Default setting for InitialStop1
 		private int is3_PipBuffer = 3;
 		private int is3_NumberOfBars = 10;
-		private int is3_MALength = 30;
-		private CTS_MAType is3_MAType = CTS_MAType.Exponential;
+		private int is3_MALength = 20;
+		private CTS_MAType is3_MAType = CTS_MAType.Simple;
 		private int is3_PipDistance = 15;
 		
 		// Manage Trade
@@ -97,8 +97,8 @@ namespace NinjaTrader.Strategy
 		private int mt1_MinPipsProfit = 2;
 		private double mt1_X = 0.5;
 		private double mt1_Y = 0.9;
-		private int mt1_MALength = 30;
-		private CTS_MAType mt1_MAType = CTS_MAType.Exponential;
+		private int mt1_MALength = 20;
+		private CTS_MAType mt1_MAType = CTS_MAType.Simple;
 		private double mt1_PctRetracement = 0.61;
 		// Manage Trade 2
         private CTS_ManageTrade manageTrade2 = CTS_ManageTrade.NotUsed; // Default setting for ManageTrade1
@@ -109,8 +109,8 @@ namespace NinjaTrader.Strategy
 		private int mt2_MinPipsProfit = 2;
 		private double mt2_X = 0.5;
 		private double mt2_Y = 0.9;
-		private int mt2_MALength = 30;
-		private CTS_MAType mt2_MAType = CTS_MAType.Exponential;
+		private int mt2_MALength = 20;
+		private CTS_MAType mt2_MAType = CTS_MAType.Simple;
 		private double mt2_PctRetracement = 0.61;
 		// Manage Trade 3
         private CTS_ManageTrade manageTrade3 = CTS_ManageTrade.NotUsed; // Default setting for ManageTrade1
@@ -121,16 +121,16 @@ namespace NinjaTrader.Strategy
 		private int mt3_MinPipsProfit = 2;
 		private double mt3_X = 0.5;
 		private double mt3_Y = 0.9;
-		private int mt3_MALength = 30;
-		private CTS_MAType mt3_MAType = CTS_MAType.Exponential;
+		private int mt3_MALength = 20;
+		private CTS_MAType mt3_MAType = CTS_MAType.Simple;
 		private double mt3_PctRetracement = 0.61;
 		
 		// Conditions to Enter
         private CTS_ConditionsToEnter conditionsToEnter1 = CTS_ConditionsToEnter.NotUsed; // Default setting for ConditionsToEnter1
 		private int ce1_NumBars = 6;
 		private double ce1_X = 0.5;
-		private int ce1_MALength = 30;
-		private CTS_MAType ce1_MAType = CTS_MAType.Exponential;
+		private int ce1_MALength = 20;
+		private CTS_MAType ce1_MAType = CTS_MAType.Simple;
 		private double ce1_Slope = 0;
 		private double ce1_Pct = 0;
 		
@@ -1406,14 +1406,14 @@ namespace NinjaTrader.Strategy
 				return;
 			}
 			
-			if(Position.MarketPosition == MarketPosition.Long && GetCurrentBid() >= Position.AvgPrice + triggerAfterXPips*TickSize)
+			if(Position.MarketPosition == MarketPosition.Long && High[0] >= Position.AvgPrice + triggerAfterXPips*TickSize)
 			{
 				if(theStop == 0 || theStop < Position.AvgPrice + minPipsProfit*TickSize)
 				{
 					theStop = Position.AvgPrice + minPipsProfit*TickSize;
 				}
 			}	
-			else if(Position.MarketPosition == MarketPosition.Short && GetCurrentAsk() <= Position.AvgPrice - triggerAfterXPips*TickSize)
+			else if(Position.MarketPosition == MarketPosition.Short && Low[0] <= Position.AvgPrice - triggerAfterXPips*TickSize)
 			{
 				if(theStop == 0 || theStop > Position.AvgPrice - minPipsProfit*TickSize)
 				{
@@ -1424,7 +1424,7 @@ namespace NinjaTrader.Strategy
 		
 		private void TakeXPercentAtYto1(double x, double y, int activateOnlyAfterXBars)
 		{
-			if(Position.Quantity <= Quantity)
+			if(Position.Quantity < Quantity)
 			{
 				return;
 			}
@@ -1435,18 +1435,19 @@ namespace NinjaTrader.Strategy
 			}
 			
 			double target = Math.Abs(Position.AvgPrice - initialStop) * y;
+			//Print(Time[0].ToString() + ", Target: " + target + ", InitialStop: " + initialStop  + ", AvgPrice: " + Position.AvgPrice + ", y: " + y);
 			if(Position.MarketPosition == MarketPosition.Long)
 			{
 				if(GetCurrentBid() >= Position.AvgPrice + target)
 				{
-					ExitLong((int)(Quantity*y));
+					ExitLong((int)(Quantity*x));
 				}
 			}	
 			else if(Position.MarketPosition == MarketPosition.Short)
 			{
 				if(GetCurrentAsk() <= Position.AvgPrice - target)
 				{
-					ExitShort((int)(Quantity*y));
+					ExitShort((int)(Quantity*x));
 				}
 			}	
 		}
@@ -1459,6 +1460,7 @@ namespace NinjaTrader.Strategy
 			}
 			
 			double target = Math.Abs(Position.AvgPrice - initialStop) * x / y;
+			Print(Time[0].ToString() + ", Target: " + target + ", InitialStop: " + initialStop  + ", AvgPrice: " + Position.AvgPrice + ", y: " + y);
 			if(Position.MarketPosition == MarketPosition.Long)
 			{
 				if(GetCurrentBid() >= Position.AvgPrice + target)
@@ -1548,7 +1550,7 @@ namespace NinjaTrader.Strategy
 					break;
 					
 				case CTS_ManageTrade.CloseAtXtoY:
-					TakeXPercentAtYto1(mt1_X, mt1_Y, mt1_ActivateOnlyAfterXBars);
+					CloseAtXToY(mt1_X, mt1_Y, mt1_ActivateOnlyAfterXBars);
 					break;
 					
 				case CTS_ManageTrade.CloseWithXPipsInProfit:
@@ -1583,7 +1585,7 @@ namespace NinjaTrader.Strategy
 					break;
 					
 				case CTS_ManageTrade.CloseAtXtoY:
-					TakeXPercentAtYto1(mt2_X, mt2_Y, mt2_ActivateOnlyAfterXBars);
+					CloseAtXToY(mt2_X, mt2_Y, mt2_ActivateOnlyAfterXBars);
 					break;
 					
 				case CTS_ManageTrade.CloseWithXPipsInProfit:
@@ -1618,7 +1620,7 @@ namespace NinjaTrader.Strategy
 					break;
 					
 				case CTS_ManageTrade.CloseAtXtoY:
-					TakeXPercentAtYto1(mt3_X, mt3_Y, mt3_ActivateOnlyAfterXBars);
+					CloseAtXToY(mt3_X, mt3_Y, mt3_ActivateOnlyAfterXBars);
 					break;
 					
 				case CTS_ManageTrade.CloseWithXPipsInProfit:
@@ -1696,7 +1698,7 @@ namespace NinjaTrader.Strategy
         public int PrevBarMinSize
         {
             get { return prevBarMinSize; }
-            set { prevBarMinSize = Math.Max(1, value); }
+            set { prevBarMinSize = Math.Max(0, value); }
         }
 
         [Description("")]
@@ -1704,11 +1706,12 @@ namespace NinjaTrader.Strategy
         public int EngulfingBarMinSize
         {
             get { return engulfingBarMinSize; }
-            set { engulfingBarMinSize = Math.Max(1, value); }
+            set { engulfingBarMinSize = Math.Max(0, value); }
         }
 
         [Description("")]
         [GridCategory("01. Tradable Event")]
+		[Gui.Design.DisplayName("XTimesTheSize")]
         public double PipBodySize
         {
             get { return pipBodySize; }
@@ -2524,7 +2527,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2543,7 +2546,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2562,7 +2565,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2588,7 +2591,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2609,7 +2612,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2631,7 +2634,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2653,7 +2656,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2675,7 +2678,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2694,11 +2697,12 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MinSize", true));
 					col.Remove(col.Find("MaxSize", true));
 					col.Remove(col.Find("MaxWickPct", true));
+					col.Remove(col.Find("PipMaxBodySize", true));
 					col.Remove(col.Find("IgnoreIndecisionBars", true));
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2720,7 +2724,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2741,7 +2745,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -2807,7 +2811,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CompareBodyOrTotalSize", true));
 					col.Remove(col.Find("AtLeastXPctTheSizeOfPreviousBar", true));
 					col.Remove(col.Find("LongWickMinPct", true));
-					col.Remove(col.Find("ShortWickMinPct", true));
+					col.Remove(col.Find("ShortWickMaxPct", true));
 					col.Remove(col.Find("LongWickPctAbovePreviousHigh", true));
 					col.Remove(col.Find("OpenAndClosePctLocation", true));
 					col.Remove(col.Find("NotPinBarIfInsideBar", true));
@@ -3003,6 +3007,7 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("MT1PipTrigger", true));
 					col.Remove(col.Find("MT1MinPipsProfit", true));
 					col.Remove(col.Find("MT1PctRetracement", true));
+					col.Remove(col.Find("MT1X", true));
 					col.Remove(col.Find("MT1Y", true));
 					break;
 					
