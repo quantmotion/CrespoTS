@@ -127,17 +127,26 @@ namespace NinjaTrader.Strategy
 		
 		// Conditions to Enter
         private CTS_ConditionsToEnter conditionsToEnter1 = CTS_ConditionsToEnter.NotUsed; // Default setting for ConditionsToEnter1
-		private int ce1_NumBars = 6;
+		private int ce1_numBars = 3;
 		private double ce1_X = 0.5;
 		private int ce1_MALength = 20;
 		private CTS_MAType ce1_MAType = CTS_MAType.Simple;
+		private double ce1_xTimes = 1.8;
+		private int ce1_MALength2 = 100;
+		private CTS_MAType ce1_MAType2 = CTS_MAType.Simple;
+		private int ce1_distancePriceIsFromMA = 100;
 		private double ce1_Slope = 0;
-		private double ce1_Pct = 0;
+		private double ce1_Pct = 0.9;
+		private int ce1_periodK = 14;
+		private int ce1_periodD = 7;
+		private int ce1_smooth = 3;
+		private int ce1_initialStopMaximum = 100;
 		
 		// User defined variables (add any user defined variables below)
 		private double theStop = 0;
 		private double lastStop = 0;
 		private double initialStop = 0;
+		private double entryPrice = 0;
 		private int entryBar = 0;
 		private int tradedir = 0;
         #endregion
@@ -168,46 +177,62 @@ namespace NinjaTrader.Strategy
 					if(tradedir > 0)
 					{
 						double price = GetBuyEntryPrice(this.TradeEntry);
+						entryPrice = price;
 						initialStop = GetBestBuyStop();
 						initialStop = Math.Max(initialStop, price - MaximumStopLoss*TickSize);
-						theStop = initialStop;
-						lastStop = theStop;
-						entryBar = CurrentBar;
-						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
+						if(CheckConditionsToEnter())
 						{
-							EnterLong(Quantity);
+							theStop = initialStop;
+							lastStop = theStop;
+							entryBar = CurrentBar;
+							if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
+							{
+								EnterLong(Quantity);
+							}
+							else if(price > GetCurrentAsk())
+							{
+								EnterLongStop(Quantity, price);
+							}
+							else if(price < GetCurrentBid())
+							{
+								EnterLongLimit(Quantity, price);
+							}
+							Print(Time[0].ToString() + "  Buy Signal Traded. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 						}
-						else if(price > GetCurrentAsk())
+						else
 						{
-							EnterLongStop(Quantity, price);
+							Print(Time[0].ToString() + "  Buy Signal Canceled due to Conditions To Enter. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 						}
-						else if(price < GetCurrentBid())
-						{
-							EnterLongLimit(Quantity, price);
-						}
-						Print(Time[0].ToString() + "  Buy Signal. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 					}
 					else if(tradedir < 0)
 					{
 						double price = GetSellEntryPrice(this.TradeEntry);
+						entryPrice = price;
 						initialStop = GetBestSellStop();
 						initialStop = Math.Min(initialStop, price + MaximumStopLoss*TickSize);
-						theStop = initialStop;
-						lastStop = theStop;
-						entryBar = CurrentBar;
-						if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
+						if(CheckConditionsToEnter())
 						{
-							EnterShort(Quantity);
+							theStop = initialStop;
+							lastStop = theStop;
+							entryBar = CurrentBar;
+							if(price <= GetCurrentAsk() + TickSize && price >= GetCurrentBid() - TickSize)
+							{
+								EnterShort(Quantity);
+							}
+							else if(price > GetCurrentAsk())
+							{
+								EnterShortLimit(Quantity, price);
+							}
+							else if(price < GetCurrentBid())
+							{
+								EnterShortStop(Quantity, price);
+							}
+							Print(Time[0].ToString() + "  Sell Signal. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 						}
-						else if(price > GetCurrentAsk())
+						else
 						{
-							EnterShortLimit(Quantity, price);
+							Print(Time[0].ToString() + "  Buy Signal Canceled due to Conditions To Enter. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 						}
-						else if(price < GetCurrentBid())
-						{
-							EnterShortStop(Quantity, price);
-						}
-						Print(Time[0].ToString() + "  Sell Signal. Entry Price: " + price.ToString() + ", Initial Stop: " + initialStop.ToString());
 					}
 				}
 			}
@@ -1678,6 +1703,270 @@ namespace NinjaTrader.Strategy
 			}
 		}
 		#endregion
+		
+		#region Conditions To Enter
+		private bool IsMaxPreviousConsecutiveBarsOfSameColor(int numBars)
+		{
+			int num = 0;
+			for(int i = 0; i < CurrentBar; i++)
+			{
+				if(Close[0] > Open[0] && Close[i] >= Open[i])
+				{
+					num++;
+				}
+				else if(Close[0] < Open[0] && Close[i] <= Open[i])
+				{
+					num++;
+				}
+				else
+				{
+					break;
+				}
+			}
+			
+			if(num < numBars)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMANotWithinXTimesInitialStop(int period, CTS_MAType type, double x)
+		{
+			double dMA = MA(period, type, 0);
+			double distanceStop = Math.Abs(entryPrice - initialStop);
+			double distanceMA = Math.Abs(dMA - initialStop);
+			
+			if(tradedir > 0 && dMA > (x*distanceStop) + initialStop)
+			{
+				return false;
+			}
+			else if(tradedir < 0 && dMA < initialStop - (x*distanceStop))
+			{
+				return false;
+			}
+			return true;
+		}
+		
+		private bool IsPDCNotWithinXTimesInitialStop(double xTimes)
+		{
+			double pdc = Bars.GetDayBar(1).Close;
+			double distanceStop = Math.Abs(entryPrice - initialStop);
+			double distancePDC = Math.Abs(pdc - entryPrice);
+			
+			if(distancePDC < xTimes*distanceStop)
+			{
+				return false;
+			}
+			return true;
+		}
+		
+		private bool IsMAFlat(int period, CTS_MAType type)
+		{
+			double dMA1 = MA(period, type, 0);
+			double dMA2 = MA(period, type, 1);
+			
+			if(dMA1 == dMA2)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMARising(int period, CTS_MAType type)
+		{
+			double dMA1 = MA(period, type, 0);
+			double dMA2 = MA(period, type, 1);
+			
+			if(dMA1 > dMA2)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMAFalling(int period, CTS_MAType type)
+		{
+			double dMA1 = MA(period, type, 0);
+			double dMA2 = MA(period, type, 1);
+			
+			if(dMA1 < dMA2)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMAAbovePrice(int period, CTS_MAType type)
+		{
+			double dMA1 = MA(period, type, 0);
+			
+			if(dMA1 > Close[0])
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMABelowPrice(int period, CTS_MAType type)
+		{
+			double dMA1 = MA(period, type, 0);
+			
+			if(dMA1 < Close[0])
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMA1AboveMA2(int period, CTS_MAType type, int period2, CTS_MAType type2)
+		{
+			double dMA1 = MA(period, type, 0);
+			double dMA2 = MA(period2, type2, 0);
+			
+			if(dMA1 > dMA2)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMA1BelowMA2(int period, CTS_MAType type, int period2, CTS_MAType type2)
+		{
+			double dMA1 = MA(period, type, 0);
+			double dMA2 = MA(period2, type2, 0);
+			
+			if(dMA1 < dMA2)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsMANotOnTheWay(int period, CTS_MAType type, int distancePriceIsFromMA)
+		{
+			double dMA = MA(period, type, 0);
+			
+			if(tradedir > 0 && (dMA < Close[0] || dMA > Close[0] + distancePriceIsFromMA*TickSize))
+			{
+				return true;
+			}
+			else if(tradedir < 0 && (dMA > Close[0] || dMA < Close[0] - distancePriceIsFromMA*TickSize))
+			{
+				return true;
+			}
+
+			return false;
+		}
+		
+		private bool IsStochasticOverPercentage(double percentage, int periodK, int periodD, int smooth)
+		{
+			double dStoch = Stochastics(periodD, periodK, smooth).K[0];
+			
+			if(dStoch > percentage)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsStochasticBelowPercentage(double percentage, int periodK, int periodD, int smooth)
+		{
+			double dStoch = Stochastics(periodD, periodK, smooth).K[0];
+			
+			if(dStoch < percentage)
+			{
+				return true;
+			}
+			return false;
+		}
+		
+		private bool IsInitialStopMoreThan(int initialStopMaximum)
+		{
+			double stop = Math.Abs(entryPrice - initialStop);
+			
+			if(stop <= initialStopMaximum*TickSize)
+			{
+				return true;
+			}
+			
+			return false;
+		}
+		
+		private bool CheckConditionsToEnter()
+		{
+			bool condition1 = true;
+			
+			switch(ConditionsToEnter1)
+			{
+				case CTS_ConditionsToEnter.MaxPreviousConsecutiveBarsOfSameColor:
+					condition1 = IsMaxPreviousConsecutiveBarsOfSameColor(ce1_numBars);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsNotWIthinXTimesInitialStop:
+					condition1 = IsMANotWithinXTimesInitialStop(ce1_MALength, ce1_MAType, ce1_X);
+					break;
+					
+				case CTS_ConditionsToEnter.PDCIsNotWithinXTimesInitialStop:
+					condition1 = IsPDCNotWithinXTimesInitialStop(ce1_xTimes);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsFlat:
+					condition1 = IsMAFlat(ce1_MALength, ce1_MAType);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsRising:
+					condition1 = IsMARising(ce1_MALength, ce1_MAType);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsFalling:
+					condition1 = IsMAFalling(ce1_MALength, ce1_MAType);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsAbovePrice:
+					condition1 = IsMAAbovePrice(ce1_MALength, ce1_MAType);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsBelowPrice:
+					condition1 = IsMABelowPrice(ce1_MALength, ce1_MAType);
+					break;
+					
+				case CTS_ConditionsToEnter.MA1IsAboveMA2:
+					condition1 = IsMA1AboveMA2(ce1_MALength, ce1_MAType, ce1_MALength2, ce1_MAType2);
+					break;
+					
+				case CTS_ConditionsToEnter.MA1IsBelowMA2:
+					condition1 = IsMA1BelowMA2(ce1_MALength, ce1_MAType, ce1_MALength2, ce1_MAType2);
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsNotOnTheWay:
+					condition1 = IsMANotOnTheWay(ce1_MALength, ce1_MAType, ce1_distancePriceIsFromMA);
+					break;
+					
+				case CTS_ConditionsToEnter.StochasticsIsOver:
+					condition1 = IsStochasticOverPercentage(ce1_Pct, ce1_periodK, ce1_periodD, ce1_smooth);
+					break;
+					
+				case CTS_ConditionsToEnter.StochasticsIsBelow:
+					condition1 = IsStochasticBelowPercentage(ce1_Pct, ce1_periodK, ce1_periodD, ce1_smooth);
+					break;
+					
+				case CTS_ConditionsToEnter.DontTradeIfInitialStopIsMoreThan:
+					condition1 = IsInitialStopMoreThan(ce1_initialStopMaximum);
+					break;
+					
+				case CTS_ConditionsToEnter.NotUsed:
+					condition1 = true;
+					break;
+					
+				default:
+					condition1 = true;
+					break;
+			}
+			
+			return condition1;
+		}
+		#endregion
 
         #region Properties
         
@@ -2433,7 +2722,7 @@ namespace NinjaTrader.Strategy
         [Description("")]
         [GridCategory("06. Conditions To Enter")]
 		[RefreshProperties(RefreshProperties.All)]
-		[Gui.Design.DisplayName(" Conditions To Enter 1")]
+		[Gui.Design.DisplayName("01  Conditions To Enter")]
         public CTS_ConditionsToEnter ConditionsToEnter1
         {
             get { return conditionsToEnter1; }
@@ -2442,7 +2731,16 @@ namespace NinjaTrader.Strategy
 
         [Description("")]
         [GridCategory("06. Conditions To Enter")]
-		[Gui.Design.DisplayName("Percentage 1")]
+		[Gui.Design.DisplayName("01 Number of Bars")]
+        public int CE1NumBars
+        {
+            get { return ce1_numBars; }
+            set { ce1_numBars = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 Percentage")]
         public double CE1Pct
         {
             get { return ce1_Pct; }
@@ -2451,7 +2749,7 @@ namespace NinjaTrader.Strategy
 
         [Description("")]
         [GridCategory("06. Conditions To Enter")]
-		[Gui.Design.DisplayName("X 1")]
+		[Gui.Design.DisplayName("01 X")]
         public double CE1X
         {
             get { return ce1_X; }
@@ -2460,16 +2758,34 @@ namespace NinjaTrader.Strategy
 
         [Description("")]
         [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 X Times")]
+        public double CE1XTimes
+        {
+            get { return ce1_xTimes; }
+            set { ce1_xTimes = Math.Max(0, value); }
+        }
+
+        /*[Description("")]
+        [GridCategory("06. Conditions To Enter")]
 		[Gui.Design.DisplayName("Slope 1")]
         public double CE1Slope
         {
             get { return ce1_Slope; }
             set { ce1_Slope = Math.Max(0, value); }
+        }*/
+
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 Distance Price Is From MA")]
+        public int CE1DistancePriceIsFromMA
+        {
+            get { return ce1_distancePriceIsFromMA; }
+            set { ce1_distancePriceIsFromMA = Math.Max(1, value); }
         }
 
         [Description("")]
         [GridCategory("06. Conditions To Enter")]
-		[Gui.Design.DisplayName("MA Length 1")]
+		[Gui.Design.DisplayName("01 MA Length")]
         public int CE1MALength
         {
             get { return ce1_MALength; }
@@ -2478,11 +2794,65 @@ namespace NinjaTrader.Strategy
 
         [Description("")]
         [GridCategory("06. Conditions To Enter")]
-		[Gui.Design.DisplayName("MA Type 1")]
+		[Gui.Design.DisplayName("01 MA Type")]
         public CTS_MAType CE1MAType
         {
             get { return ce1_MAType; }
             set { ce1_MAType = value; }
+        }
+
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 MA Length 2")]
+        public int CE1MALength2
+        {
+            get { return ce1_MALength2; }
+            set { ce1_MALength2 = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 MA Type 2")]
+        public CTS_MAType CE1MAType2
+        {
+            get { return ce1_MAType2; }
+            set { ce1_MAType2 = value; }
+        }
+
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 Period K")]
+        public int CE1PeriodK
+        {
+            get { return ce1_periodK; }
+            set { ce1_periodK = Math.Max(1, value); }
+        }
+
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 Period D")]
+        public int CE1PeriodD
+        {
+            get { return ce1_periodD; }
+            set { ce1_periodD = Math.Max(1, value); }
+        
+		}
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 Smooth")]
+        public int CE1Smooth
+        {
+            get { return ce1_smooth; }
+            set { ce1_smooth = Math.Max(1, value); }
+        }
+		
+        [Description("")]
+        [GridCategory("06. Conditions To Enter")]
+		[Gui.Design.DisplayName("01 Maximum Initial Stop")]
+        public int CE1InitialStopMaximum
+        {
+            get { return ce1_initialStopMaximum; }
+            set { ce1_initialStopMaximum = Math.Max(1, value); }
         }
 		 #endregion
 
@@ -3200,52 +3570,95 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1Pct", true));
 					col.Remove(col.Find("CE1X", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
 					col.Remove(col.Find("CE1MALength", true));
 					col.Remove(col.Find("CE1MAType", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
-				case CTS_ConditionsToEnter.MaxPreviousCOnsecutiveBarsOfSameColor:
+				case CTS_ConditionsToEnter.MaxPreviousConsecutiveBarsOfSameColor:
 					col.Remove(col.Find("CE1Pct", true));
 					col.Remove(col.Find("CE1X", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
 					col.Remove(col.Find("CE1MALength", true));
 					col.Remove(col.Find("CE1MAType", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
 				case CTS_ConditionsToEnter.MAIsNotWIthinXTimesInitialStop:
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1Pct", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
 				case CTS_ConditionsToEnter.PDCIsNotWithinXTimesInitialStop:
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1Pct", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1X", true));
 					col.Remove(col.Find("CE1MALength", true));
 					col.Remove(col.Find("CE1MAType", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
 				case CTS_ConditionsToEnter.MAIsFlat:
 				case CTS_ConditionsToEnter.MAIsRising:
 				case CTS_ConditionsToEnter.MAIsFalling:
+				case CTS_ConditionsToEnter.MAIsAbovePrice:
+				case CTS_ConditionsToEnter.MAIsBelowPrice:
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1Pct", true));
 					col.Remove(col.Find("CE1X", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
+					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
-				case CTS_ConditionsToEnter.PriceIsAboveMA:
-				case CTS_ConditionsToEnter.PriceIsBelowMA:
+				case CTS_ConditionsToEnter.MA1IsAboveMA2:
+				case CTS_ConditionsToEnter.MA1IsBelowMA2:
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1Pct", true));
 					col.Remove(col.Find("CE1X", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
@@ -3253,9 +3666,43 @@ namespace NinjaTrader.Strategy
 				case CTS_ConditionsToEnter.StochasticsIsBelow:
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1X", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
 					col.Remove(col.Find("CE1MALength", true));
 					col.Remove(col.Find("CE1MAType", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
+					col.Remove(col.Find("CE1Slope", true));
+					break;
+					
+				case CTS_ConditionsToEnter.MAIsNotOnTheWay:
+					col.Remove(col.Find("CE1NumBars", true));
+					col.Remove(col.Find("CE1Pct", true));
+					col.Remove(col.Find("CE1X", true));
+					col.Remove(col.Find("CE1XTimes", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
+					col.Remove(col.Find("CE1Slope", true));
+					break;
+					
+				case CTS_ConditionsToEnter.DontTradeIfInitialStopIsMoreThan:
+					col.Remove(col.Find("CE1NumBars", true));
+					col.Remove(col.Find("CE1Pct", true));
+					col.Remove(col.Find("CE1X", true));
+					col.Remove(col.Find("CE1XTimes", true));
+					col.Remove(col.Find("CE1MALength", true));
+					col.Remove(col.Find("CE1MAType", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 					
@@ -3263,9 +3710,16 @@ namespace NinjaTrader.Strategy
 					col.Remove(col.Find("CE1NumBars", true));
 					col.Remove(col.Find("CE1Pct", true));
 					col.Remove(col.Find("CE1X", true));
-					col.Remove(col.Find("CE1Y", true));
+					col.Remove(col.Find("CE1XTimes", true));
 					col.Remove(col.Find("CE1MALength", true));
 					col.Remove(col.Find("CE1MAType", true));
+					col.Remove(col.Find("CE1MALength2", true));
+					col.Remove(col.Find("CE1MAType2", true));
+					col.Remove(col.Find("CE1DistancePriceIsFromMA", true));
+					col.Remove(col.Find("CE1PeriodK", true));
+					col.Remove(col.Find("CE1PeriodD", true));
+					col.Remove(col.Find("CE1Smooth", true));
+					col.Remove(col.Find("CE1InitialStopMaximum", true));
 					col.Remove(col.Find("CE1Slope", true));
 					break;
 			}
@@ -3434,17 +3888,20 @@ namespace NinjaTrader.Strategy
 	public enum CTS_ConditionsToEnter
 	{
 		NotUsed,
-		MinRiskRewardXToYForSupportAndResistanceTrade,
-		MaxPreviousCOnsecutiveBarsOfSameColor,
+		MaxPreviousConsecutiveBarsOfSameColor,
 		MAIsNotWIthinXTimesInitialStop,
 		PDCIsNotWithinXTimesInitialStop,
 		MAIsFlat,
 		MAIsRising,
 		MAIsFalling,
-		PriceIsAboveMA,
-		PriceIsBelowMA,
+		MA1IsAboveMA2,
+		MA1IsBelowMA2,
+		MAIsAbovePrice,
+		MAIsBelowPrice,
+		MAIsNotOnTheWay,
 		StochasticsIsOver,
-		StochasticsIsBelow
+		StochasticsIsBelow,
+		DontTradeIfInitialStopIsMoreThan
 	}
 	
 	public enum CTS_MAType
